@@ -1,0 +1,176 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.nb</groupId>
+  <artifactId>sustsos</artifactId>
+  <version>1.0</version>
+  <name>SustSos</name>
+  <description>MIDI sustain+sostenuto transformer</description>
+  
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.class>org.nb.SustSos</main.class>
+    <!-- shaded jar name -->
+    <shade.finalName>${project.artifactId}-${project.version}-all</shade.finalName>
+    <!-- jlink output dir -->
+    <jlink.image.dir>${project.build.directory}/sustsos-jre</jlink.image.dir>
+    <!-- app version for installer -->
+    <app.version>${project.version}</app.version>
+    
+    <jpkg.input.dir>${project.build.directory}/jpackage-input</jpkg.input.dir>
+  <jpkg.output.dir>${project.build.directory}/jpackage-out</jpkg.output.dir>
+  </properties>
+  
+    <dependencies>
+    <dependency>
+    <groupId>net.java.dev.jna</groupId>
+    <artifactId>jna</artifactId>
+    <version>5.14.0</version>
+</dependency>
+    </dependencies> 
+  <build>
+    <plugins>
+      <!-- Java 21 compile -->
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+        </configuration>
+      </plugin>
+
+      <!-- Put Main-Class into the plain jar manifest (handy) -->
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>${main.class}</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <!-- Shade to one runnable JAR -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <finalName>${shade.finalName}</finalName>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>${main.class}</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Build a trimmed runtime with jlink (needs java.desktop for javax.sound.midi) -->
+      <plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-jlink-plugin</artifactId>
+  <version>3.2.0</version>
+  <executions>
+    <execution>
+      <id>make-runtime</id>
+      <phase>package</phase>
+      <goals><goal>jlink</goal></goals>
+      <configuration>
+        <addModules>java.base,java.desktop</addModules>
+        <stripDebug>true</stripDebug>
+        <noHeaderFiles>true</noHeaderFiles>
+        <noManPages>true</noManPages>
+        <compress>2</compress>
+
+        <!-- the magic bits -->
+        <attach>true</attach>
+        <classifier>runtime</classifier>
+
+        <!-- optional explicit output dir; jlink will still attach the artifact -->
+        <output>${project.build.directory}/sustsos-jre</output>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+
+
+<plugin>
+  <artifactId>maven-resources-plugin</artifactId>
+  <version>3.3.1</version>
+  <executions>
+    <execution>
+      <id>stage-jpackage-input</id>
+      <phase>package</phase>
+      <goals><goal>copy-resources</goal></goals>
+      <configuration>
+        <outputDirectory>${jpkg.input.dir}</outputDirectory>
+        <resources>
+          <resource>
+            <directory>${project.build.directory}</directory>
+            <includes>
+              <include>${project.artifactId}-${project.version}-all.jar</include>
+            </includes>
+          </resource>
+        </resources>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+
+
+      <!-- Package Windows .exe with bundled JRE -->
+      <plugin>
+  <groupId>org.panteleyev</groupId>
+  <artifactId>jpackage-maven-plugin</artifactId>
+  <version>1.7.0</version>
+  <executions>
+    <execution>
+      <id>app-image</id>
+      <phase>package</phase>
+      <goals><goal>jpackage</goal></goals>
+      <configuration>
+        <name>SustSos</name>
+        <appVersion>${project.version}</appVersion>
+        <type>APP_IMAGE</type>
+        <destination>${jpkg.output.dir}</destination>
+
+        <!-- use the staged dir, not target/ -->
+        <input>${jpkg.input.dir}</input>
+        <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
+
+        <!-- build bundled JRE internally -->
+        <addModules>java.base,java.desktop</addModules>
+        <jlinkOptions>--strip-debug --no-header-files --no-man-pages --compress=2</jlinkOptions>
+
+        <winConsole>true</winConsole>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+
+
+
+
+
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Optional: Windows-only profile guard for jpackage -->
+    <profile>
+      <id>windows</id>
+      <activation>
+        <os><family>Windows</family></os>
+      </activation>
+    </profile>
+  </profiles>
+</project>
