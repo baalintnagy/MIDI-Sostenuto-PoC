@@ -29,15 +29,15 @@ public class SustSos {
     // ---------- Config ----------
 
     private static String IN_NAME = "Hammer 88 Pro";
-    private static String IN2_NAME = ""; // optional second input
+    private static String IN2_NAME = "MIDIIN3 (Hammer 88 Pro)"; // optional second input
     private static String OUT_NAME = "postSSB";
 
     private static int CC66_THRESH = 10;
     private static int CC66_HYST = 2;
 
     private static boolean UMBRELLA = true;
-    private static int UMBRELLA_DELAY_MS = 2;
-    private static int UMBRELLA_TAIL_MS = 2;
+    private static int UMBRELLA_DELAY_MS = 1;
+    private static int UMBRELLA_TAIL_MS = 1;
     private static int SOST_CC_IN = 22; // CC from in2 remapped to CC66
 
     // ---------- JNA callbacks held at class level to prevent GC ----------
