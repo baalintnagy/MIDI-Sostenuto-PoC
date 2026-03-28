@@ -330,6 +330,18 @@ public class SustSos {
         Thread.currentThread().join();
     }
 
+    // ANSI color codes for syntax highlighting
+    private static final String RESET = "\u001B[0m";
+    private static final String CHANNEL = "\u001B[36m"; // Cyan
+    private static final String DATA = "\u001B[32m"; // Green
+    private static final String STATUS = "\u001B[35m"; // Magenta
+    private static final String INPUT = "\u001B[96m"; // Bright cyan (light blue)
+    private static final String TIME = "\u001B[90m"; // Bright black (gray)
+    private static final String SEPARATOR = "\u001B[37m"; // White
+
+    // Toggle for color support - set to false if terminal doesn't support ANSI colors
+    private static final boolean USE_COLORS = true;
+
     private static void logRawMidi(int packed, String inputName) {
         int status = packed & 0xFF;
         int d1 = (packed >> 8) & 0xFF;
@@ -338,36 +350,66 @@ public class SustSos {
         int cmd = status & 0xF0;
         int ch = (status & 0x0F) + 1;
         String kind;
+        String kindColor;
         switch (cmd) {
         case 0x90:
             kind = "NOTE_ON";
+            kindColor = "\u001B[91m"; // Bright red for note on
             break;
         case 0x80:
             kind = "NOTE_OFF";
+            kindColor = "\u001B[31m"; // Red for note off
             break;
         case 0xB0:
             kind = "CC";
+            kindColor = "\u001B[93m"; // Bright yellow for control change
             break;
         case 0xE0:
             kind = "P_BEND";
+            kindColor = "\u001B[94m"; // Bright blue for pitch bend
             break;
         case 0xD0:
             kind = "CH_PR";
+            kindColor = "\u001B[95m"; // Bright magenta for channel pressure
             break;
         case 0xA0:
             kind = "POLY_AT";
+            kindColor = "\u001B[96m"; // Bright cyan for poly aftertouch
             break;
         case 0xC0:
             kind = "PC";
+            kindColor = "\u001B[92m"; // Bright green for program change
             break;
         default:
             kind = "OTHER";
+            kindColor = "\u001B[90m"; // Gray for other
             break;
         }
 
-        conWriteF(" CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %dms%n",
-            ch, kind, d1, d2, status, inputName, now);
-
+        if (USE_COLORS) {
+            StringBuilder sb = new StringBuilder(512);
+            sb.append(SEPARATOR).append("CH:").append(RESET)
+              .append(" ").append(CHANNEL).append(String.format("%2d", ch)).append(RESET)
+              .append(" ").append(SEPARATOR).append("|").append(RESET)
+              .append(" ").append(kindColor).append(String.format("%-9s", kind)).append(RESET)
+              .append(" ").append(SEPARATOR).append("|").append(RESET)
+              .append(" ").append(SEPARATOR).append("D1:").append(RESET)
+              .append(" ").append(DATA).append(String.format("%3d", d1)).append(RESET)
+              .append(" ").append(SEPARATOR).append("|").append(RESET)
+              .append(" ").append(SEPARATOR).append("D2:").append(RESET)
+              .append(" ").append(DATA).append(String.format("%3d", d2)).append(RESET)
+              .append(" ").append(SEPARATOR).append("|").append(RESET)
+              .append(" ").append(SEPARATOR).append("Status:").append(RESET)
+              .append(" ").append(STATUS).append(String.format("%3d", status)).append(RESET)
+              .append(" ").append(SEPARATOR).append("|").append(RESET)
+              .append(" ").append(INPUT).append(inputName).append(RESET)
+              .append(" ").append(SEPARATOR).append("|").append(RESET)
+              .append(" ").append(TIME).append(String.format("%d", now)).append(RESET);
+            conWriteLine(sb.toString());
+        } else {
+            conWriteF("CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %dms%n",
+                ch, kind, d1, d2, status, inputName, now);
+        }
     }
 
     // ---------- The MIDI transformer ----------
