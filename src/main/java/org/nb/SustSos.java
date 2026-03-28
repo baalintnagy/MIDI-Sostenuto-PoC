@@ -466,7 +466,7 @@ public class SustSos {
                 .append(" ").append(RESET).append("|").append(RESET)
                 .append(" ").append(RESET).append("Status:").append(RESET)
                 .append(" ").append(BRIGHT_YELLOW).append("%3d".formatted(status)).append(RESET)
-                .append(" ").append(RESET).append("‖").append(RESET)
+                .append(" ").append(RESET).append("|").append(RESET)
                 .append(" ").append(BRIGHT_BLUE).append(inputName).append(RESET)
                 .append(" ").append(RESET).append("|").append(RESET)
                 .append(" ").append(GRAY).append("%,d ns".formatted(now).replace(",", " ")).append(RESET);
