@@ -5,6 +5,8 @@ import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -182,6 +184,9 @@ public class SustSos {
 
     public static void main(String[] args) throws Exception {
 
+        // Start async logger before MIDI processing
+        startAsyncLogger();
+
         listInputs();
         conWriteLine("");
         listOutputs();
@@ -258,7 +263,7 @@ public class SustSos {
                 int status = packed & 0xFF;
                 int d1 = (packed >> 8) & 0xFF;
                 int d2 = (packed >> 16) & 0xFF;
-                logRawMidi(packed, IN_NAME);
+                logRawMidiAsync(packed, IN_NAME);
                 try {
                     ShortMessage sm = new ShortMessage();
                     sm.setMessage(status, d1, d2);
@@ -282,7 +287,7 @@ public class SustSos {
                     int status = packed & 0xFF;
                     int d1 = (packed >> 8) & 0xFF;
                     int d2 = (packed >> 16) & 0xFF;
-                    logRawMidi(packed, IN2_NAME);
+                    logRawMidiAsync(packed, IN2_NAME);
                     if ((status & 0xF0) == 0xB0 && d1 == SOST_CC_IN) {
                         try {
                             ShortMessage sm = new ShortMessage();
@@ -314,6 +319,7 @@ public class SustSos {
 
         // Graceful shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            stopAsyncLogger();
             WinMM.INSTANCE.midiInStop(inHandle);
             WinMM.INSTANCE.midiInClose(inHandle);
             if (in2HandleFinal != null) {
@@ -342,11 +348,55 @@ public class SustSos {
     // Toggle for color support - set to false if terminal doesn't support ANSI colors
     private static final boolean USE_COLORS = true;
 
-    private static void logRawMidi(int packed, String inputName) {
+    // Async logging infrastructure
+    private static final BlockingQueue<LogEntry> logQueue = new LinkedBlockingQueue<>();
+    private static volatile Thread loggerThread;
+    private static volatile boolean loggerRunning = true;
+
+    private static class LogEntry {
+        final int packed;
+        final String inputName;
+
+        LogEntry(int packed, String inputName) {
+            this.packed = packed;
+            this.inputName = inputName;
+        }
+    }
+
+    private static void startAsyncLogger() {
+        loggerThread = new Thread(() -> {
+            while (loggerRunning) {
+                try {
+                    LogEntry entry = logQueue.take();
+                    if (entry != null) {
+                        logRawMidiSync(entry.packed, entry.inputName);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }, "midi-logger");
+        loggerThread.setDaemon(true);
+        loggerThread.start();
+    }
+
+    private static void stopAsyncLogger() {
+        loggerRunning = false;
+        if (loggerThread != null) {
+            loggerThread.interrupt();
+        }
+    }
+
+    private static void logRawMidiAsync(int packed, String inputName) {
+        logQueue.offer(new LogEntry(packed, inputName));
+    }
+
+    private static void logRawMidiSync(int packed, String inputName) {
         int status = packed & 0xFF;
         int d1 = (packed >> 8) & 0xFF;
         int d2 = (packed >> 16) & 0xFF;
-        long now = System.nanoTime() / 1_000_000;
+        long now = System.nanoTime();
         int cmd = status & 0xF0;
         int ch = (status & 0x0F) + 1;
         String kind;
@@ -387,7 +437,7 @@ public class SustSos {
         }
 
         if (USE_COLORS) {
-            StringBuilder sb = new StringBuilder(512);
+            StringBuilder sb = new StringBuilder(768);
             sb.append(SEPARATOR).append("CH:").append(RESET)
               .append(" ").append(CHANNEL).append(String.format("%2d", ch)).append(RESET)
               .append(" ").append(SEPARATOR).append("|").append(RESET)
@@ -404,11 +454,11 @@ public class SustSos {
               .append(" ").append(SEPARATOR).append("|").append(RESET)
               .append(" ").append(INPUT).append(inputName).append(RESET)
               .append(" ").append(SEPARATOR).append("|").append(RESET)
-              .append(" ").append(TIME).append(String.format("%d", now)).append(RESET);
+              .append(" ").append(TIME).append(String.format("%,d", now).replace(",", " ")).append(RESET);
             conWriteLine(sb.toString());
         } else {
-            conWriteF("CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %dms%n",
-                ch, kind, d1, d2, status, inputName, now);
+            conWriteF("CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %s ns%n",
+                ch, kind, d1, d2, status, inputName, String.format("%,d", now).replace(",", " "));
         }
     }
 
