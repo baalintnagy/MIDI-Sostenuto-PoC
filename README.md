@@ -5,16 +5,22 @@
 > This is a Work in Progress Project
 > Windows only for now
 
+You need ate least one loopback MIDI port to use this application.
+
 ## Overview
 
-A MIDI processor that emulates CC66 (Sostenuto) behavior with handing over held notes from and/to sustain.
-The implementation uses Note-Off message retention. 
+A MIDI processor that emulates CC66 (Sostenuto) behavior with handing over held notes from and/to CC64 (Sustain) mechanism.
+The implementation clears CC64 and CC66, and uses Note-Off message retention. 
+
+## Build pipeline and releases
+
+Yet to be implemented
 
 ## Features
 
-- **Dual Input Support**: Primary MIDI input plus optional secondary input for sostenuto control
+- **Dual Input Support**: Primary MIDI input plus optional secondary input (if sostenuto control is provided on a different port)
 - **Sostenuto Implementation**: True sostenuto functionality with latching mechanism
-- **Umbrella**: Injects small Sustain impulses to avoid triggering unwanted ADST/R due to Ableton Live injecting automatic Note-Off messages before Note-On messages.
+- **Umbrella**: Injects small Sustain impulses to avoid triggering unwanted ADST/R due to Ableton Live injecting automatic Note-Off messages before Note-On messages on its internal BUS.
 - **Real-time Processing**: Sub-millisecond MIDI-latency with optimized threading
 - **Color-coded Logging**: Comprehensive MIDI message monitoring with ANSI color support
 - **Windows Native Integration**: Uses WinMM API for direct hardware access
@@ -92,15 +98,6 @@ The application implements true sostenuto behavior:
 2. **Selective Sustain**: Only latched notes continue sounding when keys are released
 3. **Release**: When sostenuto is disengaged, latched notes are released (unless sustain is active)
 
-### Umbrella Mode
-
-Umbrella mode allows proper retriggering of sustained/sostenuto notes:
-
-1. When a sustained note is played again, it's temporarily released
-2. The new note-on is sent after a configurable delay
-3. The note is automatically re-sustained after the tail duration
-4. This prevents note stacking and maintains natural piano behavior
-
 ### Threading Model
 
 - **Main Thread**: MIDI input processing and message routing
@@ -121,15 +118,6 @@ private static int UMBRELLA_TAIL_MS = 1;  // Umbrella tail duration
 ```
 
 ## Troubleshooting
-
-### Common Issues
-
-1. **MIDI Device Not Found**: Ensure device names match exactly (case-insensitive)
-2. **High Latency**: Check system performance and reduce logging verbosity
-3. **No Sound Output**: Verify MIDI output device is properly connected and configured
-4. **Crash on Startup**: Ensure Java 21+ is installed and in PATH
-
-### Debug Mode
 
 Set `USE_COLORS = false` in the source code to disable ANSI colors if terminal doesn't support them.
 
