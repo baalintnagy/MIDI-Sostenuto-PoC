@@ -340,7 +340,7 @@ public class SustSos {
     private static final String RESET = "\u001B[0m";
     private static final String CHANNEL = "\u001B[36m"; // Cyan
     private static final String DATA = "\u001B[32m"; // Green
-    private static final String STATUS = "\u001B[35m"; // Magenta
+    private static final String STATUS = "\u001B[35m"; // Magenta (now used for OTHER)
     private static final String INPUT = "\u001B[96m"; // Bright cyan (light blue)
     private static final String TIME = "\u001B[90m"; // Bright black (gray)
     private static final String SEPARATOR = "\u001B[37m"; // White
@@ -432,7 +432,7 @@ public class SustSos {
             break;
         default:
             kind = "OTHER";
-            kindColor = "\u001B[90m"; // Gray for other
+            kindColor = "\u001B[35m"; // Magenta for other
             break;
         }
 
@@ -450,7 +450,7 @@ public class SustSos {
               .append(" ").append(DATA).append(String.format("%3d", d2)).append(RESET)
               .append(" ").append(SEPARATOR).append("|").append(RESET)
               .append(" ").append(SEPARATOR).append("Status:").append(RESET)
-              .append(" ").append(STATUS).append(String.format("%3d", status)).append(RESET)
+                .append(" ").append(DATA).append(String.format("%3d", status)).append(RESET)
               .append(" ").append(SEPARATOR).append("|").append(RESET)
               .append(" ").append(INPUT).append(inputName).append(RESET)
               .append(" ").append(SEPARATOR).append("|").append(RESET)
