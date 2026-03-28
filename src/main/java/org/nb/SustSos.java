@@ -5,7 +5,6 @@ import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -231,10 +230,10 @@ public class SustSos {
             }
 
             if (IN2_NAME.isEmpty()) {
-                conWriteF(">> Config: in=%s out=%s umbrella=%s delay=%d tail=%d sostCcIn=%d%n",
+                conWriteF(">> Config: in: %s out: %s umbrella: %s delay: %d tail=%d sostCcIn: %d%n",
                     IN_NAME, OUT_NAME, UMBRELLA, UMBRELLA_DELAY_MS, UMBRELLA_TAIL_MS, SOST_CC_IN);
             } else {
-                conWriteF(">> Config: in=%s in2=%s out=%s umbrella=%s delay=%d tail=%d sostCcIn=%d%n",
+                conWriteF(">> Config: in: %s in2: %s out: %s umbrella: %s delay: %d tail: %d sostCcIn: %d%n",
                     IN_NAME, IN2_NAME, OUT_NAME, UMBRELLA, UMBRELLA_DELAY_MS, UMBRELLA_TAIL_MS, SOST_CC_IN);
             }
         } catch (Exception e) {
@@ -259,6 +258,7 @@ public class SustSos {
                 int status = packed & 0xFF;
                 int d1 = (packed >> 8) & 0xFF;
                 int d2 = (packed >> 16) & 0xFF;
+                logRawMidi(packed, IN_NAME);
                 try {
                     ShortMessage sm = new ShortMessage();
                     sm.setMessage(status, d1, d2);
@@ -282,6 +282,7 @@ public class SustSos {
                     int status = packed & 0xFF;
                     int d1 = (packed >> 8) & 0xFF;
                     int d2 = (packed >> 16) & 0xFF;
+                    logRawMidi(packed, IN2_NAME);
                     if ((status & 0xF0) == 0xB0 && d1 == SOST_CC_IN) {
                         try {
                             ShortMessage sm = new ShortMessage();
@@ -329,6 +330,46 @@ public class SustSos {
         Thread.currentThread().join();
     }
 
+    private static void logRawMidi(int packed, String inputName) {
+        int status = packed & 0xFF;
+        int d1 = (packed >> 8) & 0xFF;
+        int d2 = (packed >> 16) & 0xFF;
+        long now = System.nanoTime() / 1_000_000;
+        int cmd = status & 0xF0;
+        int ch = (status & 0x0F) + 1;
+        String kind;
+        switch (cmd) {
+        case 0x90:
+            kind = "NOTE_ON";
+            break;
+        case 0x80:
+            kind = "NOTE_OFF";
+            break;
+        case 0xB0:
+            kind = "CC";
+            break;
+        case 0xE0:
+            kind = "P_BEND";
+            break;
+        case 0xD0:
+            kind = "CH_PR";
+            break;
+        case 0xA0:
+            kind = "POLY_AT";
+            break;
+        case 0xC0:
+            kind = "PC";
+            break;
+        default:
+            kind = "OTHER";
+            break;
+        }
+
+        conWriteF(" CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %dms%n",
+            ch, kind, d1, d2, status, inputName, now);
+
+    }
+
     // ---------- The MIDI transformer ----------
 
     static final class SostenutoReceiver implements Receiver {
@@ -352,14 +393,7 @@ public class SustSos {
         private final AtomicIntegerArray umbrellaDepth = new AtomicIntegerArray(16);
         private volatile boolean off = false;
 
-        private static final Map<Integer, String> MSG_NAMES = Map.of(
-            ShortMessage.NOTE_ON, "NOTE_ON ",
-            ShortMessage.NOTE_OFF, "NOTE_OFF",
-            ShortMessage.CONTROL_CHANGE, "CC      ",
-            ShortMessage.PITCH_BEND, "PBEND   ",
-            ShortMessage.CHANNEL_PRESSURE, "CHPR    ",
-            ShortMessage.POLY_PRESSURE, "POLYAT  ",
-            ShortMessage.PROGRAM_CHANGE, "PC      ");
+
 
         SostenutoReceiver(Receiver out) {
             this.out = out;
@@ -395,7 +429,6 @@ public class SustSos {
                     return;
                 }
                 var msg = copyOf(sm);
-                logIn(msg, timeStamp);
                 int cmd = sm.getCommand();
                 int ch = sm.getChannel();
 
@@ -531,23 +564,6 @@ public class SustSos {
                 }
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-            }
-        }
-
-        private void logIn(ShortMessage sm, long ts) {
-            int ch = sm.getChannel() + 1;
-            int cmd = sm.getCommand();
-            int d1 = sm.getData1();
-            int d2 = sm.getData2();
-            long now = System.nanoTime() / 1_000_000;
-            String kind = MSG_NAMES.getOrDefault(cmd, "OTHER  ");
-            if (cmd == ShortMessage.CONTROL_CHANGE) {
-                conWriteF("  IN %dms   ch%2d  %s   cc  =%3d   val=%3d%n", now, ch, kind, d1, d2);
-            } else if (kind.startsWith("NOTE")) {
-                conWriteF("  IN %dms   ch%2d  %s   note=%3d   vel=%3d%n", now, ch, kind, d1, d2);
-            } else {
-                conWriteF("  IN %dms   ch%2d  %s   d1  =%3d   d2 =%3d   status=%3d%n", now, ch, kind, d1, d2,
-                    sm.getStatus());
             }
         }
 
