@@ -339,18 +339,26 @@ public class SustSos {
     // ---------- ANSI color constants ----------
 
     private static final String RESET = "\u001B[0m";
+
     private static final String RED = "\u001B[31m";
     private static final String GREEN = "\u001B[32m";
-    private static final String CYAN = "\u001B[36m";
-    private static final String WHITE = "\u001B[37m";
-    private static final String GRAY = "\u001B[90m";
+    private static final String BLUE = "\u001B[34m";
+
     private static final String BRIGHT_RED = "\u001B[91m";
     private static final String BRIGHT_GREEN = "\u001B[92m";
-    private static final String BRIGHT_YELLOW = "\u001B[93m";
     private static final String BRIGHT_BLUE = "\u001B[94m";
-    private static final String BRIGHT_MAGENTA = "\u001B[95m";
+
+    private static final String WHITE = "\u001B[37m";
+    private static final String GRAY = "\u001B[90m";
+
+    private static final String CYAN = "\u001B[36m";
     private static final String BRIGHT_CYAN = "\u001B[96m";
+
+    private static final String YELLOW = "\u001B[33m";
+    private static final String BRIGHT_YELLOW = "\u001B[93m";
+
     private static final String MAGENTA = "\u001B[35m";
+    private static final String BRIGHT_MAGENTA = "\u001B[95m";
 
     // Toggle for color support - set to false if terminal doesn't support ANSI colors
     private static final boolean USE_COLORS = true;
@@ -411,11 +419,11 @@ public class SustSos {
         switch (cmd) {
         case 0x90:
             kind = "NOTE_ON";
-            kindColor = BRIGHT_RED;
+            kindColor = BRIGHT_CYAN;
             break;
         case 0x80:
             kind = "NOTE_OFF";
-            kindColor = RED;
+            kindColor = CYAN;
             break;
         case 0xB0:
             kind = "CC";
@@ -423,7 +431,7 @@ public class SustSos {
             break;
         case 0xE0:
             kind = "P_BEND";
-            kindColor = BRIGHT_BLUE;
+            kindColor = YELLOW;
             break;
         case 0xD0:
             kind = "CH_PR";
@@ -431,37 +439,37 @@ public class SustSos {
             break;
         case 0xA0:
             kind = "POLY_AT";
-            kindColor = BRIGHT_CYAN;
+            kindColor = BRIGHT_MAGENTA;
             break;
         case 0xC0:
             kind = "PC";
-            kindColor = BRIGHT_GREEN;
+            kindColor = BRIGHT_MAGENTA;
             break;
         default:
             kind = "OTHER";
-            kindColor = MAGENTA;
+            kindColor = BRIGHT_RED;
             break;
         }
 
         if (USE_COLORS) {
             StringBuilder sb = new StringBuilder(768);
-            sb.append(WHITE).append("CH:").append(RESET)
-                .append(" ").append(CYAN).append(String.format("%2d", ch)).append(RESET)
-                .append(" ").append(WHITE).append("|").append(RESET)
-              .append(" ").append(kindColor).append(String.format("%-9s", kind)).append(RESET)
-                .append(" ").append(WHITE).append("|").append(RESET)
-                .append(" ").append(WHITE).append("D1:").append(RESET)
-                .append(" ").append(GREEN).append(String.format("%3d", d1)).append(RESET)
-                .append(" ").append(WHITE).append("|").append(RESET)
-                .append(" ").append(WHITE).append("D2:").append(RESET)
-                .append(" ").append(GREEN).append(String.format("%3d", d2)).append(RESET)
-                .append(" ").append(WHITE).append("|").append(RESET)
-                .append(" ").append(WHITE).append("Status:").append(RESET)
-                .append(" ").append(GREEN).append(String.format("%3d", status)).append(RESET)
-                .append(" ").append(WHITE).append("|").append(RESET)
-                .append(" ").append(BRIGHT_CYAN).append(inputName).append(RESET)
-                .append(" ").append(WHITE).append("|").append(RESET)
-                .append(" ").append(GRAY).append(String.format("%,d", now).replace(",", " ")).append(RESET);
+            sb.append(RESET).append("CH:").append(RESET)
+                .append(" ").append(WHITE).append("%2d".formatted(ch)).append(RESET)
+                .append(" ").append(RESET).append("|").append(RESET)
+                .append(" ").append(kindColor).append("%-9s".formatted(kind)).append(RESET)
+                .append(" ").append(RESET).append("|").append(RESET)
+                .append(" ").append(RESET).append("D1:").append(RESET)
+                .append(" ").append(BRIGHT_RED).append("%3d".formatted(d1)).append(RESET)
+                .append(" ").append(RESET).append("|").append(RESET)
+                .append(" ").append(RESET).append("D2:").append(RESET)
+                .append(" ").append(BRIGHT_GREEN).append("%3d".formatted(d2)).append(RESET)
+                .append(" ").append(RESET).append("|").append(RESET)
+                .append(" ").append(RESET).append("Status:").append(RESET)
+                .append(" ").append(BRIGHT_YELLOW).append("%3d".formatted(status)).append(RESET)
+                .append(" ").append(RESET).append("‖").append(RESET)
+                .append(" ").append(BRIGHT_BLUE).append(inputName).append(RESET)
+                .append(" ").append(RESET).append("|").append(RESET)
+                .append(" ").append(GRAY).append("%,d ns".formatted(now).replace(",", " ")).append(RESET);
             conWriteLine(sb.toString());
         } else {
             conWriteF("CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %s ns%n",
