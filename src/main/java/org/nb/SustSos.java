@@ -336,14 +336,21 @@ public class SustSos {
         Thread.currentThread().join();
     }
 
-    // ANSI color codes for syntax highlighting
+    // ---------- ANSI color constants ----------
+
     private static final String RESET = "\u001B[0m";
-    private static final String CHANNEL = "\u001B[36m"; // Cyan
-    private static final String DATA = "\u001B[32m"; // Green
-    private static final String STATUS = "\u001B[35m"; // Magenta (now used for OTHER)
-    private static final String INPUT = "\u001B[96m"; // Bright cyan (light blue)
-    private static final String TIME = "\u001B[90m"; // Bright black (gray)
-    private static final String SEPARATOR = "\u001B[37m"; // White
+    private static final String RED = "\u001B[31m";
+    private static final String GREEN = "\u001B[32m";
+    private static final String CYAN = "\u001B[36m";
+    private static final String WHITE = "\u001B[37m";
+    private static final String GRAY = "\u001B[90m";
+    private static final String BRIGHT_RED = "\u001B[91m";
+    private static final String BRIGHT_GREEN = "\u001B[92m";
+    private static final String BRIGHT_YELLOW = "\u001B[93m";
+    private static final String BRIGHT_BLUE = "\u001B[94m";
+    private static final String BRIGHT_MAGENTA = "\u001B[95m";
+    private static final String BRIGHT_CYAN = "\u001B[96m";
+    private static final String MAGENTA = "\u001B[35m";
 
     // Toggle for color support - set to false if terminal doesn't support ANSI colors
     private static final boolean USE_COLORS = true;
@@ -404,57 +411,57 @@ public class SustSos {
         switch (cmd) {
         case 0x90:
             kind = "NOTE_ON";
-            kindColor = "\u001B[91m"; // Bright red for note on
+            kindColor = BRIGHT_RED;
             break;
         case 0x80:
             kind = "NOTE_OFF";
-            kindColor = "\u001B[31m"; // Red for note off
+            kindColor = RED;
             break;
         case 0xB0:
             kind = "CC";
-            kindColor = "\u001B[93m"; // Bright yellow for control change
+            kindColor = BRIGHT_YELLOW;
             break;
         case 0xE0:
             kind = "P_BEND";
-            kindColor = "\u001B[94m"; // Bright blue for pitch bend
+            kindColor = BRIGHT_BLUE;
             break;
         case 0xD0:
             kind = "CH_PR";
-            kindColor = "\u001B[95m"; // Bright magenta for channel pressure
+            kindColor = BRIGHT_MAGENTA;
             break;
         case 0xA0:
             kind = "POLY_AT";
-            kindColor = "\u001B[96m"; // Bright cyan for poly aftertouch
+            kindColor = BRIGHT_CYAN;
             break;
         case 0xC0:
             kind = "PC";
-            kindColor = "\u001B[92m"; // Bright green for program change
+            kindColor = BRIGHT_GREEN;
             break;
         default:
             kind = "OTHER";
-            kindColor = "\u001B[35m"; // Magenta for other
+            kindColor = MAGENTA;
             break;
         }
 
         if (USE_COLORS) {
             StringBuilder sb = new StringBuilder(768);
-            sb.append(SEPARATOR).append("CH:").append(RESET)
-              .append(" ").append(CHANNEL).append(String.format("%2d", ch)).append(RESET)
-              .append(" ").append(SEPARATOR).append("|").append(RESET)
+            sb.append(WHITE).append("CH:").append(RESET)
+                .append(" ").append(CYAN).append(String.format("%2d", ch)).append(RESET)
+                .append(" ").append(WHITE).append("|").append(RESET)
               .append(" ").append(kindColor).append(String.format("%-9s", kind)).append(RESET)
-              .append(" ").append(SEPARATOR).append("|").append(RESET)
-              .append(" ").append(SEPARATOR).append("D1:").append(RESET)
-              .append(" ").append(DATA).append(String.format("%3d", d1)).append(RESET)
-              .append(" ").append(SEPARATOR).append("|").append(RESET)
-              .append(" ").append(SEPARATOR).append("D2:").append(RESET)
-              .append(" ").append(DATA).append(String.format("%3d", d2)).append(RESET)
-              .append(" ").append(SEPARATOR).append("|").append(RESET)
-              .append(" ").append(SEPARATOR).append("Status:").append(RESET)
-                .append(" ").append(DATA).append(String.format("%3d", status)).append(RESET)
-              .append(" ").append(SEPARATOR).append("|").append(RESET)
-              .append(" ").append(INPUT).append(inputName).append(RESET)
-              .append(" ").append(SEPARATOR).append("|").append(RESET)
-              .append(" ").append(TIME).append(String.format("%,d", now).replace(",", " ")).append(RESET);
+                .append(" ").append(WHITE).append("|").append(RESET)
+                .append(" ").append(WHITE).append("D1:").append(RESET)
+                .append(" ").append(GREEN).append(String.format("%3d", d1)).append(RESET)
+                .append(" ").append(WHITE).append("|").append(RESET)
+                .append(" ").append(WHITE).append("D2:").append(RESET)
+                .append(" ").append(GREEN).append(String.format("%3d", d2)).append(RESET)
+                .append(" ").append(WHITE).append("|").append(RESET)
+                .append(" ").append(WHITE).append("Status:").append(RESET)
+                .append(" ").append(GREEN).append(String.format("%3d", status)).append(RESET)
+                .append(" ").append(WHITE).append("|").append(RESET)
+                .append(" ").append(BRIGHT_CYAN).append(inputName).append(RESET)
+                .append(" ").append(WHITE).append("|").append(RESET)
+                .append(" ").append(GRAY).append(String.format("%,d", now).replace(",", " ")).append(RESET);
             conWriteLine(sb.toString());
         } else {
             conWriteF("CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %s ns%n",
