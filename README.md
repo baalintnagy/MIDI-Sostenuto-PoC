@@ -2,30 +2,39 @@
 
 ## Important
 
-> This is a Work in Progress Project
+> This is a Work in Progress Project - the code is ugly
 > Windows only for now
 
-You need ate least one loopback MIDI port to use this application.
+You need at least one loopback MIDI port to use this application.
+Examples:
+- loopMIDI: https://www.tobias-erichsen.de/software/loopmidi.html (Kind of abandoned, last version is from 2019) 
+- Windows MIDI Services: pre-released, unstable, but tameable on Windows 11.
 
 ## Overview
 
-A MIDI processor that emulates CC66 (Sostenuto) behavior with handing over held notes from and/to CC64 (Sustain) mechanism.
-The implementation clears CC64 and CC66, and uses Note-Off message retention. 
+A MIDI processor that emulates CC66 (Sostenuto) behavior of oldschool hardware digital pianos and keyboards: 
+Main consideration: handing over held notes from CC66 (Sostenuto) and/to CC64 (Sustain) mechanism.
+The implementation clears CC64 and CC66, and uses Note-Off message retention.
+
+> This means emulated CC66 and CC64 messages are not relayed to the loopback port.
+
 
 ## Releases
+
+> Uses App image packaging - no installation required
 
 [📦 View and download releases on GitHub](https://github.com/baalintnagy/MIDI-Sostenuto-PoC/releases)
 
 ## Features
 
-- **Dual Input Support**: Primary MIDI input plus optional secondary input (if sostenuto control is provided on a different port)
-- **Sostenuto Implementation**: True sostenuto functionality with latching mechanism
-- **Umbrella**: Injects small Sustain impulses to avoid triggering unwanted ADST/R due to Ableton Live injecting automatic Note-Off messages before Note-On messages on its internal BUS.
-- **Real-time Processing**: Sub-millisecond MIDI-latency with optimized threading
+- **Dual Input Support**: Primary MIDI input (keys, pedals, pitch-bender, mod-wheel, etc) plus optional secondary input (if sostenuto control is provided on a different port - MIDI controllers creates dedicated MIDI inputs for CTRL messages.)
+- **Sostenuto Implementation**: True Sostenuto (CC66) functionality with latching mechanism: Note-Off retention.
+- **Umbrella**: (Specific to Ableton Live). This having enabled, the transformer injects small Sustain (CC64) impulses - to avoid triggering unwanted ADSR/R artifacts due to Ableton Live injecting automatic Note-Off messages before consecutive Note-On messages on its internal BUS.
+- **Real-time Processing**: Sub-millisecond MIDI-latency with optimized threading. (Tested usingthe unstable Windows MIDI Services.)
 - **Color-coded Logging**: Comprehensive MIDI message monitoring with ANSI color support
 - **Windows Native Integration**: Uses WinMM API for direct hardware access
 
-## Requirements
+## Build Requirements
 
 - Java 21 or higher
 - Windows operating system (WinMM API dependency)
@@ -49,7 +58,7 @@ mvn clean package
 
 3. Run the application:
 ```bash
-java -jar target/sustsos-1.0-all.jar
+java -jar target/sustsos-*-all.jar
 ```
 
 ### Windows Executable
@@ -57,7 +66,7 @@ java -jar target/sustsos-1.0-all.jar
 The build process also creates a bundled Windows executable with embedded JRE:
 
 ```bash
-mvn clean package -Pwindows
+mvn clean package
 ```
 
 The executable will be located in `target/jpackage-out/`.
@@ -81,12 +90,69 @@ Enter config: <inName>[,<in2Name>],<outName>,<umbrella:true/false>,<delayMs>,<ta
 - `tailMs`: Umbrella mode tail duration in milliseconds
 - `sostCcIn` (optional): CC number to internally remap to CC66 (sostenuto), and handle accordingly
 
+**NOTE** In case of config parsing error, this version will silently fall back to my specific hardware. (Hammer 88 Pro)
+
 ### Example Configurations
 
-**Basic setup:**
+**Basic setup with single controller:**
 ```
-In-port-1,In-port-2,Loopback-port,true,1,1,22
+USB MIDI Controller,LoopMIDI Port,true,1,1
 ```
+
+**Dual input setup (main keyboard + separate pedal controller):**
+```
+Yamaha P-125,USB Foot Controller,LoopMIDI Port,true,1,1
+```
+
+**Popular MIDI Controller Configurations:**
+
+#### MIDI Controllers
+- **Novation Launchkey Series:**
+  ```
+  Launchkey 49 MK3,LoopBack MIDI Port,true,1,1
+  ```
+- **Native Instruments Komplete Kontrol:**
+  ```
+  Komplete Kontrol A61,LoopBack MIDI Port,true,1,1
+  ```
+- **Arturia KeyLab Series:**
+  ```
+  KeyLab Essential 61,LoopBack MIDI Port,true,1,1
+  ```
+
+#### Professional Controllers
+- **Hammer 88 Pro (developer's setup):**
+  ```
+  Hammer 88 Pro,MIDIIN3 (Hammer 88 Pro),LoopBack MIDI Port,true,1,1
+  ```
+- **M-Audio Oxygen Series:**
+  ```
+  Oxygen 49,LoopBack MIDI Port,true,1,1
+  ```
+
+#### Custom CC Remapping
+Some controllers use different CC numbers for sostenuto-like functionality:
+
+- **Korg keyboards (CC67 for sostenuto):**
+  ```
+  Korg Krome,LoopBack MIDI Port,true,1,1,67
+  ```
+- **Roland keyboards (CC67 for sostenuto):**
+  ```
+  Roland RD-2000,LoopBack MIDI Port,true,1,1,67
+  ```
+
+#### Advanced Setup with Umbrella Mode Disabled
+For use outside Ableton Live:
+```
+USB MIDI Controller,LoopBack MIDI Port,false,0,0
+```
+
+**Tips:**
+- Use `loopMIDI` for simple configuration - latency promises not guaranteed
+- Use `Windows MIDI Services` for guaranteed sub-millisecond latency, suffer confuguration comsequences
+- To quickly see available device names, just run the application from terminal and let the cmd-line configuration fail.
+- Umbrella mode recommended for Ableton Live users, primarily, but can be used with any DAW
 
 ## Technical Details
 
@@ -121,21 +187,6 @@ private static int UMBRELLA_TAIL_MS = 1;  // Umbrella tail duration
 
 Set `USE_COLORS = false` in the source code to disable ANSI colors if terminal doesn't support them.
 
-## Development
-
-### Project Structure
-
-```
-src/
-├── main/
-│   ├── java/
-│   │   └── org/
-│   │       └── nb/
-│   │           └── SustSos.java    # Main application
-│   └── resources/                  # Resource files
-└── test/                           # Test files
-```
-
 ### Dependencies
 
 - **JNA 5.14.0**: Java Native Access for WinMM API integration
@@ -151,7 +202,7 @@ mvn compile
 mvn clean package
 
 # Windows executable only
-mvn clean package -Pwindows
+mvn clean package
 ```
 
 ## License
