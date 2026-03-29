@@ -12,9 +12,9 @@ You need ate least one loopback MIDI port to use this application.
 A MIDI processor that emulates CC66 (Sostenuto) behavior with handing over held notes from and/to CC64 (Sustain) mechanism.
 The implementation clears CC64 and CC66, and uses Note-Off message retention. 
 
-## Build pipeline and releases
+## Releases
 
-Yet to be implemented
+[📦 View and download releases on GitHub](https://github.com/baalintnagy/MIDI-Sostenuto-PoC/releases)
 
 ## Features
 

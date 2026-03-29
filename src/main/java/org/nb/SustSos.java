@@ -265,6 +265,13 @@ public class SustSos {
                 int d2 = (packed >> 16) & 0xFF;
                 logRawMidiAsync(packed, IN_NAME);
                 try {
+                    // If no secondary input, remap SOST_CC_IN -> CC66 here
+                    if (IN2_NAME.isEmpty() && (status & 0xF0) == 0xB0 && d1 == SOST_CC_IN) {
+                        ShortMessage sm = new ShortMessage();
+                        sm.setMessage(ShortMessage.CONTROL_CHANGE, status & 0x0F, 66, d2);
+                        sost.send(sm, -1);
+                        return;
+                    }
                     ShortMessage sm = new ShortMessage();
                     sm.setMessage(status, d1, d2);
                     sost.send(sm, -1);
