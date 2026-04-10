@@ -1,6 +1,10 @@
 package org.nb;
 
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static org.nb.AnsiColor.RESET;
+import static org.nb.Mappings.MIDI_MSG_COLOR;
+import static org.nb.Mappings.MIDI_MSG_LOOKUP;
+import static org.nb.Mappings.getAccentColor;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -343,30 +347,6 @@ public class SustSos {
         Thread.currentThread().join();
     }
 
-    // ---------- ANSI color constants ----------
-
-    private static final String RESET = "\u001B[0m";
-
-    private static final String RED = "\u001B[31m";
-    private static final String GREEN = "\u001B[32m";
-    private static final String BLUE = "\u001B[34m";
-
-    private static final String BRIGHT_RED = "\u001B[91m";
-    private static final String BRIGHT_GREEN = "\u001B[92m";
-    private static final String BRIGHT_BLUE = "\u001B[94m";
-
-    private static final String WHITE = "\u001B[37m";
-    private static final String GRAY = "\u001B[90m";
-
-    private static final String CYAN = "\u001B[36m";
-    private static final String BRIGHT_CYAN = "\u001B[96m";
-
-    private static final String YELLOW = "\u001B[33m";
-    private static final String BRIGHT_YELLOW = "\u001B[93m";
-
-    private static final String MAGENTA = "\u001B[35m";
-    private static final String BRIGHT_MAGENTA = "\u001B[95m";
-
     // Toggle for color support - set to false if terminal doesn't support ANSI colors
     private static final boolean USE_COLORS = true;
 
@@ -414,6 +394,16 @@ public class SustSos {
         logQueue.offer(new LogEntry(packed, inputName));
     }
 
+    private static final String RAW_LINE_FORMAT = """
+        ${RESET}CH:${RESET} %s%2d${RESET} ${RESET}|${RESET} %s%-9s${RESET} ${RESET}|${RESET} \
+        ${RESET}D1:${RESET} %s%3d${RESET} ${RESET}|${RESET} \
+        ${RESET}D2:${RESET} %s%3d${RESET} ${RESET}|${RESET} \
+        ${RESET}Status:${RESET} %s%3d${RESET} ${RESET}|${RESET} \
+        %s%s${RESET} ${RESET}|${RESET} %s%s${RESET} \
+        """;
+
+    private static final String LINE_FORMAT = RAW_LINE_FORMAT.replace("${RESET}", RESET);
+
     private static void logRawMidiSync(int packed, String inputName) {
         int status = packed & 0xFF;
         int d1 = (packed >> 8) & 0xFF;
@@ -421,66 +411,24 @@ public class SustSos {
         long now = System.nanoTime();
         int cmd = status & 0xF0;
         int ch = (status & 0x0F) + 1;
-        String kind;
-        String kindColor;
-        switch (cmd) {
-        case 0x90:
-            kind = "NOTE_ON";
-            kindColor = BRIGHT_CYAN;
-            break;
-        case 0x80:
-            kind = "NOTE_OFF";
-            kindColor = CYAN;
-            break;
-        case 0xB0:
-            kind = "CC";
-            kindColor = BRIGHT_YELLOW;
-            break;
-        case 0xE0:
-            kind = "P_BEND";
-            kindColor = YELLOW;
-            break;
-        case 0xD0:
-            kind = "CH_PR";
-            kindColor = BRIGHT_MAGENTA;
-            break;
-        case 0xA0:
-            kind = "POLY_AT";
-            kindColor = BRIGHT_MAGENTA;
-            break;
-        case 0xC0:
-            kind = "PC";
-            kindColor = BRIGHT_MAGENTA;
-            break;
-        default:
-            kind = "OTHER";
-            kindColor = BRIGHT_RED;
-            break;
-        }
+
+        MidiMessageType msgType = MIDI_MSG_LOOKUP.getOrDefault(cmd, MidiMessageType.OTHER);
+        String msgColor = MIDI_MSG_COLOR.getOrDefault(msgType, AnsiColor.RED.bright());
+
 
         if (USE_COLORS) {
-            StringBuilder sb = new StringBuilder(768);
-            sb.append(RESET).append("CH:").append(RESET)
-                .append(" ").append(WHITE).append("%2d".formatted(ch)).append(RESET)
-                .append(" ").append(RESET).append("|").append(RESET)
-                .append(" ").append(kindColor).append("%-9s".formatted(kind)).append(RESET)
-                .append(" ").append(RESET).append("|").append(RESET)
-                .append(" ").append(RESET).append("D1:").append(RESET)
-                .append(" ").append(BRIGHT_YELLOW).append("%3d".formatted(d1)).append(RESET)
-                .append(" ").append(RESET).append("|").append(RESET)
-                .append(" ").append(RESET).append("D2:").append(RESET)
-                .append(" ").append(BRIGHT_GREEN).append("%3d".formatted(d2)).append(RESET)
-                .append(" ").append(RESET).append("|").append(RESET)
-                .append(" ").append(RESET).append("Status:").append(RESET)
-                .append(" ").append(BRIGHT_RED).append("%3d".formatted(status)).append(RESET)
-                .append(" ").append(RESET).append("|").append(RESET)
-                .append(" ").append(BRIGHT_BLUE).append(inputName).append(RESET)
-                .append(" ").append(RESET).append("|").append(RESET)
-                .append(" ").append(GRAY).append("%,d ns".formatted(now).replace(",", " ")).append(RESET);
-            conWriteLine(sb.toString());
+            String line = LINE_FORMAT.formatted(
+                AnsiColor.WHITE.dark(), ch,
+                msgColor, msgType,
+                getAccentColor(AnsiColor.YELLOW, msgType), d1,
+                getAccentColor(AnsiColor.GREEN, msgType), d2,
+                getAccentColor(AnsiColor.RED, msgType), status,
+                AnsiColor.BLUE.bright(), inputName,
+                AnsiColor.GRAY.bright(), "%,d ns".formatted(now).replace(",", " "));
+            conWriteLine(line);
         } else {
             conWriteF("CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %s ns%n",
-                ch, kind, d1, d2, status, inputName, String.format("%,d", now).replace(",", " "));
+                ch, msgType, d1, d2, status, inputName, String.format("%,d", now).replace(",", " "));
         }
     }
 
