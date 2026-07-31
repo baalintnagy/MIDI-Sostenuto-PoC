@@ -11,14 +11,13 @@ public enum MidiMessageType {
     PC(0xC0),
     OTHER(0x00);
 
-    private final int cmd;
+    private final int command;
 
-    MidiMessageType(int cmd) {
-        this.cmd = cmd;
+    MidiMessageType(int command) {
+        this.command = command;
     }
 
-    public int getCmd() {
-        return cmd;
+    public int command() {
+        return command;
     }
-
 }

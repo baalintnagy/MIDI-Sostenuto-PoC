@@ -12,13 +12,10 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>org.nb.SustSos</main.class>
-
-        <!-- shaded jar name -->
+        <app.version>1.0.1</app.version>
+        <jna.version>5.14.0</jna.version>
+        <junit.jupiter.version>5.10.2</junit.jupiter.version>
         <shade.finalName>${project.artifactId}-${project.version}-all</shade.finalName>
-
-        <!-- app version for installer -->
-        <app.version>${project.version}</app.version>
-
         <jpkg.input.dir>${project.build.directory}/jpackage-input</jpkg.input.dir>
         <jpkg.output.dir>${project.build.directory}/jpackage-out</jpkg.output.dir>
     </properties>
@@ -27,12 +24,18 @@
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
-            <version>5.14.0</version>
+            <version>${jna.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
-            <!-- Java 21 compile -->
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
@@ -41,7 +44,11 @@
                 </configuration>
             </plugin>
 
-            <!-- Put Main-Class into the plain jar manifest (handy) -->
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+            </plugin>
+
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
@@ -54,7 +61,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Shade to one runnable JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -95,8 +101,7 @@
                                 <resource>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>
-                                            ${project.artifactId}-${project.version}-all.jar</include>
+                                        <include>${project.artifactId}-${project.version}-all.jar</include>
                                     </includes>
                                 </resource>
                             </resources>
@@ -105,8 +110,6 @@
                 </executions>
             </plugin>
 
-
-            <!-- Package Windows .exe with bundled JRE -->
             <plugin>
                 <groupId>org.panteleyev</groupId>
                 <artifactId>jpackage-maven-plugin</artifactId>
@@ -120,18 +123,21 @@
                         </goals>
                         <configuration>
                             <name>SustSos</name>
-                            <appVersion>${project.version}</appVersion>
+                            <appVersion>${app.version}</appVersion>
                             <type>APP_IMAGE</type>
                             <destination>${jpkg.output.dir}</destination>
+                            <removeDestination>true</removeDestination>
 
-                            <!-- use the staged dir, not target/ -->
                             <input>${jpkg.input.dir}</input>
-                            <mainJar>
-                                ${project.artifactId}-${project.version}-all.jar</mainJar>
+                            <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
 
-                            <!-- build bundled JRE internally -->
                             <addModules>java.base,java.desktop,java.logging</addModules>
-                            <jlinkOptions>--strip-debug --no-header-files --no-man-pages --compress=2</jlinkOptions>
+                            <jLinkOptions>
+                                <jLinkOption>--strip-debug</jLinkOption>
+                                <jLinkOption>--no-header-files</jLinkOption>
+                                <jLinkOption>--no-man-pages</jLinkOption>
+                                <jLinkOption>--compress=2</jLinkOption>
+                            </jLinkOptions>
 
                             <winConsole>true</winConsole>
                         </configuration>
@@ -139,19 +145,26 @@
                 </executions>
             </plugin>
 
-
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>make-windows-launcher-cleanable</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <attrib
+                                    file="${jpkg.output.dir}/SustSos/SustSos.exe"
+                                    readonly="false" />
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <!-- Optional: Windows-only profile guard for jpackage -->
-        <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>Windows</family>
-                </os>
-            </activation>
-        </profile>
-    </profiles>
 </project>
