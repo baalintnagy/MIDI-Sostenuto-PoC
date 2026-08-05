@@ -13,20 +13,25 @@ public enum AnsiColor {
     YELLOW(33),
     MAGENTA(35);
 
+    public static final String RESET = "\u001B[0m";
+
+    private static final int BRIGHT_OFFSET = 60;
+
     private final int code;
 
     AnsiColor(int code) {
         this.code = code;
     }
 
-    public static final String RESET = "\u001B[0m";
-
     public String dark() {
-        return "\u001B[%dm".formatted(code);
+        return escapeSequence(code);
     }
 
     public String bright() {
-        return "\u001B[%dm".formatted(code + 60);
+        return escapeSequence(code + BRIGHT_OFFSET);
     }
 
+    private static String escapeSequence(int colorCode) {
+        return "\u001B[%dm".formatted(colorCode);
+    }
 }
