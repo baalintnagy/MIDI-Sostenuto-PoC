@@ -2,6 +2,12 @@ package org.nb;
 
 import java.util.Locale;
 import java.util.Objects;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 record AppConfig(
     String primaryInputName,
@@ -17,16 +23,41 @@ record AppConfig(
     private static final int SOSTENUTO_THRESHOLD = 10;
     private static final int SOSTENUTO_HYSTERESIS = 2;
 
-    static AppConfig defaults() {
-        return new AppConfig(
-            "Hammer 88 Pro",
-            "MIDIIN3 (Hammer 88 Pro)",
-            "postSSB",
-            true,
-            1,
-            1,
-            DEFAULT_SOSTENUTO_CONTROLLER
-        );
+    AppConfig {
+        if (primaryInputName == null || primaryInputName.isBlank()
+            || outputName == null || outputName.isBlank() || secondaryInputName == null) {
+            throw new IllegalArgumentException("Input/output names are required; use an empty secondaryInputName for one input");
+        }
+        if (umbrellaDelayMs < 0 || umbrellaTailMs < 0 || sostenutoController < 0 || sostenutoController > 127) {
+            throw new IllegalArgumentException("Timings must be nonnegative and sostenutoController must be 0..127");
+        }
+    }
+
+    static AppConfig load(Path path) throws IOException {
+        try {
+            AppConfig config = JsonMapper.builder()
+                .enable(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
+                .enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES)
+                .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
+                .build().readValue(path.toFile(), AppConfig.class);
+            if (config == null) {
+                throw new IOException("Configuration must be a JSON object");
+            }
+            return config;
+        } catch (IOException exception) {
+            throw new IOException("Cannot load configuration from " + path.toAbsolutePath() + ": " + exception.getMessage(), exception);
+        }
+    }
+
+    static Path configurationPath() throws Exception {
+        Path local = Path.of("sustsos.json").toAbsolutePath();
+        if (Files.exists(local)) {
+            return local;
+        }
+        Path application = Path.of(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        return Files.isRegularFile(application) ? application.resolveSibling("sustsos.json") : local;
     }
 
     static AppConfig parse(String input) {

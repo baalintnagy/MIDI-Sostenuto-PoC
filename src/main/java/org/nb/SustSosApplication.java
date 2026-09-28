@@ -39,17 +39,25 @@ final class SustSosApplication {
         Thread.currentThread().join();
     }
 
-    private static AppConfig readConfiguration() {
+    private static AppConfig readConfiguration() throws Exception {
         System.out.println(CONFIG_PROMPT);
-        AppConfig config = AppConfig.defaults();
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            config = AppConfig.parse(reader.readLine());
-            System.out.println(config.summary());
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
+        System.out.println("Press ENTER to load " + AppConfig.configurationPath());
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        AppConfig config = resolveConfiguration(reader.readLine(), AppConfig.configurationPath());
+        System.out.println(config.summary());
         return config;
+    }
+
+    static AppConfig resolveConfiguration(String input, java.nio.file.Path path) throws java.io.IOException {
+        if (input == null || input.isBlank()) {
+            return AppConfig.load(path);
+        }
+        try {
+            return AppConfig.parse(input);
+        } catch (RuntimeException exception) {
+            System.err.println("Invalid interactive configuration: " + exception.getMessage() + "; loading " + path);
+            return AppConfig.load(path);
+        }
     }
 
     private static void printActiveDevices(AppConfig config) {

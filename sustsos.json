@@ -1,0 +1,9 @@
+{
+  "primaryInputName": "Hammer 88 Pro",
+  "secondaryInputName": "MIDIIN3 (Hammer 88 Pro)",
+  "outputName": "postSSB",
+  "umbrellaEnabled": true,
+  "umbrellaDelayMs": 1,
+  "umbrellaTailMs": 1,
+  "sostenutoController": 22
+}

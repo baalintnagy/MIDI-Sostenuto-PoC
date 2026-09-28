@@ -39,7 +39,7 @@ Umbrella mode has two timing controls:
 
 ```powershell
 mvn clean package
-java -jar target/sustsos-1.0.1a-all.jar
+java -jar target/sustsos-1.0.3-all.jar
 ```
 
 The package phase also creates a self-contained Windows application image in `target/jpackage-out/SustSos/`.
@@ -62,7 +62,7 @@ At startup, SustSos lists the available WinMM inputs and outputs and then prompt
 | `tailMs` | Umbrella CC64 tail in milliseconds. |
 | `sostCcIn` | Optional incoming controller to remap to CC66; defaults to CC22. |
 
-When a secondary input is configured, only its matching `sostCcIn` messages are processed. With a single input, matching controller messages on the primary input are remapped instead. Invalid configuration input falls back to the built-in Hammer 88 Pro defaults after printing the parsing error.
+When a secondary input is configured, only its matching `sostCcIn` messages are processed. With a single input, matching controller messages on the primary input are remapped instead. Empty input (or end of input) loads `sustsos.json`. Invalid configuration input prints the parsing error and loads that same JSON file. Missing or invalid JSON stops startup with a descriptive error.
 
 ### Examples
 
@@ -90,11 +90,21 @@ Umbrella mode disabled:
 USB MIDI Controller,Loopback MIDI Port,false,0,0
 ```
 
-The built-in fallback configuration is:
+The external fallback configuration is stored in `sustsos.json` at the project root:
 
-```text
-Hammer 88 Pro,MIDIIN3 (Hammer 88 Pro),postSSB,true,1,1,22
+```json
+{
+  "primaryInputName": "Hammer 88 Pro",
+  "secondaryInputName": "MIDIIN3 (Hammer 88 Pro)",
+  "outputName": "postSSB",
+  "umbrellaEnabled": true,
+  "umbrellaDelayMs": 1,
+  "umbrellaTailMs": 1,
+  "sostenutoController": 22
+}
 ```
+
+The file is read using Jackson from the working directory, or, when absent there, from beside the application JAR. The Windows package includes it at `app/sustsos.json`; edit that file to change the packaged defaults. It is never embedded in the JAR or loaded as a classpath resource. All JSON fields are required; set `secondaryInputName` to an empty string for a single input. Timings must be nonnegative and the controller number must be between 0 and 127.
 
 Device names must match the names printed at startup, ignoring letter case.
 
