@@ -6,7 +6,7 @@ public final class SustSos {
     private SustSos() {
     }
 
-    public static void main(String[] args) throws Exception {
+    static void main() throws Exception {
         new SustSosApplication().run();
     }
 }

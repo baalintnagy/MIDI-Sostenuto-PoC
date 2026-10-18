@@ -80,7 +80,7 @@ final class SustSosApplication {
         SostenutoReceiver transformer,
         WinMMReceiver nativeOutput
     ) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        Runtime.getRuntime().addShutdownHook(Thread.ofPlatform().name("sustsos-shutdown").unstarted(() -> {
             logger.close();
             primaryInput.close();
             if (secondaryInput != null) {
@@ -90,20 +90,18 @@ final class SustSosApplication {
             runSafely(transformer::close);
             nativeOutput.close();
             System.out.println("\n[bye]");
-        }, "sustsos-shutdown"));
+        }));
     }
 
     private static void startQuitWatcher() {
-        Thread quitWatcher = new Thread(() -> runSafely(() -> {
+        Thread.ofPlatform().name("quit-watcher").daemon().start(() -> runSafely(() -> {
             System.out.println("\n[quit] Press ENTER to exit.");
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             String line = reader.readLine();
             if (line != null && line.isEmpty()) {
                 System.exit(0);
             }
-        }), "quit-watcher");
-        quitWatcher.setDaemon(true);
-        quitWatcher.start();
+        }));
     }
 
     private static void runSafely(ThrowingAction action) {

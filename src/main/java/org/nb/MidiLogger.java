@@ -39,9 +39,7 @@ final class MidiLogger implements AutoCloseable {
             return;
         }
         running = true;
-        loggerThread = new Thread(this::processEntries, "midi-logger");
-        loggerThread.setDaemon(true);
-        loggerThread.start();
+        loggerThread = Thread.ofPlatform().name("midi-logger").daemon().start(this::processEntries);
     }
 
     void log(int packedMessage, String inputName) {
@@ -52,7 +50,7 @@ final class MidiLogger implements AutoCloseable {
         while (running) {
             try {
                 write(queue.take());
-            } catch (InterruptedException exception) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
                 break;
             }

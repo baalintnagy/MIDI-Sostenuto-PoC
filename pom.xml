@@ -4,12 +4,12 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.nb</groupId>
     <artifactId>sustsos</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <name>SustSos</name>
     <description>MIDI sustain+sostenuto transformer</description>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>org.nb.SustSos</main.class>
         <app.version>${project.version}</app.version>
@@ -43,7 +43,7 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.14.1</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>
                 </configuration>
@@ -62,6 +62,9 @@
                         <manifest>
                             <mainClass>${main.class}</mainClass>
                         </manifest>
+                        <manifestEntries>
+                            <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+                        </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>
@@ -83,6 +86,9 @@
                                 <transformer
                                     implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>${main.class}</mainClass>
+                                    <manifestEntries>
+                                        <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+                                    </manifestEntries>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -146,8 +152,11 @@
                                 <jLinkOption>--strip-debug</jLinkOption>
                                 <jLinkOption>--no-header-files</jLinkOption>
                                 <jLinkOption>--no-man-pages</jLinkOption>
-                                <jLinkOption>--compress=2</jLinkOption>
+                                <jLinkOption>--compress=zip-6</jLinkOption>
                             </jLinkOptions>
+                            <javaOptions>
+                                <option>--enable-native-access=ALL-UNNAMED</option>
+                            </javaOptions>
 
                             <winConsole>true</winConsole>
                         </configuration>

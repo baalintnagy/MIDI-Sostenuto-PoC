@@ -36,7 +36,7 @@ final class SostenutoReceiver implements Receiver {
     private final boolean[][] delayedOff = new boolean[CHANNEL_COUNT][NOTE_COUNT];
     private final AtomicIntegerArray umbrellaDepth = new AtomicIntegerArray(CHANNEL_COUNT);
     private final ScheduledExecutorService scheduler = newSingleThreadScheduledExecutor(
-        runnable -> new Thread(runnable, "sost-umbrella"));
+        Thread.ofPlatform().name("sost-umbrella").factory());
 
     private volatile boolean off;
 
@@ -60,20 +60,13 @@ final class SostenutoReceiver implements Receiver {
             }
 
             ShortMessage message = MidiMessages.copyOf(shortMessage);
-            int command = shortMessage.getCommand();
             int channel = shortMessage.getChannel();
 
-            if (command == ShortMessage.CONTROL_CHANGE) {
-                handleControlChange(message, channel, timestamp);
-                return;
+            switch (shortMessage.getCommand()) {
+                case ShortMessage.CONTROL_CHANGE -> handleControlChange(message, channel, timestamp);
+                case ShortMessage.NOTE_ON, ShortMessage.NOTE_OFF -> handleNote(message, channel, timestamp);
+                default -> output.send(message, timestamp);
             }
-
-            if (command == ShortMessage.NOTE_ON || command == ShortMessage.NOTE_OFF) {
-                handleNote(message, channel, timestamp);
-                return;
-            }
-
-            output.send(message, timestamp);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
@@ -276,7 +269,7 @@ final class SostenutoReceiver implements Receiver {
             if (!scheduler.awaitTermination(10, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
-        } catch (InterruptedException exception) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         }
     }

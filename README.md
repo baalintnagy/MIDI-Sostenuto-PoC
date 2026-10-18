@@ -30,7 +30,7 @@ Umbrella mode has two timing controls:
 ## Requirements
 
 - Windows
-- JDK 21 or newer
+- JDK 25 or newer
 - Maven
 - A MIDI controller or digital piano
 - A loopback MIDI output
@@ -43,6 +43,8 @@ java -jar target/sustsos-1.0.3-all.jar
 ```
 
 The package phase also creates a self-contained Windows application image in `target/jpackage-out/SustSos/`.
+
+Set `JAVA_HOME` to your JDK 25 (or newer) installation and confirm it with `mvn -version` before building. Compilation targets Java 25 and uses finalized language features only; preview flags are not required. The executable JAR and packaged launcher enable native access for the JNA WinMM bindings. When launching from an IDE or with a custom classpath, add `--enable-native-access=ALL-UNNAMED` to the JVM options.
 
 ## Configuration
 
