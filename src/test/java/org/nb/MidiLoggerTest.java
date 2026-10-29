@@ -36,16 +36,31 @@ class MidiLoggerTest {
         }
     }
 
+    @Test
+    void filteredMessagesDoNotReachEitherOutputFormat() throws Exception {
+        var filter = new LogFilter(java.util.List.of(new LogFilter.Rule("CLOCK", null, null, null, null)));
+        for (boolean colors : new boolean[] {false, true}) {
+            String[] lines = render(new int[] {0xF8, 0xFA, 0xF8}, colors, filter, 1);
+            assertEquals(1, lines.length);
+            assertTrue(lines[0].contains("START"));
+            assertFalse(lines[0].contains("CLOCK"));
+        }
+    }
+
     private String[] render(int[] statuses, boolean colors) throws Exception {
+        return render(statuses, colors, LogFilter.NONE, statuses.length);
+    }
+
+    private String[] render(int[] statuses, boolean colors, LogFilter filter, int expectedLines) throws Exception {
         var bytes = new ByteArrayOutputStream();
-        var written = new CountDownLatch(statuses.length);
+        var written = new CountDownLatch(expectedLines);
         var sink = new OutputStream() {
             @Override public void write(int value) {
                 bytes.write(value);
                 if (value == '\n') written.countDown();
             }
         };
-        try (var logger = new MidiLogger(new PrintStream(sink), colors)) {
+        try (var logger = new MidiLogger(new PrintStream(sink), colors, filter)) {
             logger.start();
             for (int status : statuses) logger.log(status, "Test Port");
             assertTrue(written.await(5, TimeUnit.SECONDS), "Logger did not finish writing");

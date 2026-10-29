@@ -2,7 +2,6 @@ package org.nb;
 
 import static org.nb.AnsiColor.RESET;
 import static org.nb.ColorMappings.MIDI_MSG_COLOR;
-import static org.nb.ColorMappings.MIDI_MSG_LOOKUP;
 import static org.nb.ColorMappings.getAccentColor;
 
 import java.io.PrintStream;
@@ -25,11 +24,17 @@ final class MidiLogger implements AutoCloseable {
     private final BlockingQueue<LogEntry> queue = new LinkedBlockingQueue<>();
     private final PrintStream output;
     private final boolean colorsEnabled;
+    private final LogFilter filter;
 
     private volatile boolean running;
     private Thread loggerThread;
 
     MidiLogger(PrintStream output, boolean colorsEnabled) {
+        this(output, colorsEnabled, LogFilter.NONE);
+    }
+
+    MidiLogger(PrintStream output, boolean colorsEnabled, LogFilter filter) {
+        this.filter = filter;
         this.output = output;
         this.colorsEnabled = colorsEnabled;
     }
@@ -43,7 +48,10 @@ final class MidiLogger implements AutoCloseable {
     }
 
     void log(int packedMessage, String inputName) {
-        queue.offer(new LogEntry(new PackedMidiMessage(packedMessage), inputName));
+        PackedMidiMessage message = new PackedMidiMessage(packedMessage);
+        if (!filter.blocks(message, inputName)) {
+            queue.offer(new LogEntry(message, inputName));
+        }
     }
 
     private void processEntries() {
@@ -61,10 +69,7 @@ final class MidiLogger implements AutoCloseable {
         PackedMidiMessage message = entry.message();
         String channel = message.status() < 0xF0 ? Integer.toString(message.channel() + 1) : "--";
         long now = System.nanoTime();
-        MidiMessageType messageType = MIDI_MSG_LOOKUP.getOrDefault(
-            message.status() >= 0xF0 ? message.status() : message.command(),
-            MidiMessageType.OTHER
-        );
+        MidiMessageType messageType = MidiMessageType.from(message);
 
         if (!colorsEnabled) {
             output.printf(

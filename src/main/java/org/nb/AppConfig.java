@@ -19,7 +19,8 @@ record AppConfig(
     @JsonProperty(required = true) int umbrellaTailMs,
     @JsonProperty(required = true) int sostenutoCC,
     Integer sostenutoNote,
-    Boolean sostenutoNoteToggle
+    Boolean sostenutoNoteToggle,
+    LogFilter logFilter
 ) {
 
     private static final int DEFAULT_SOSTENUTO_CC = 22;
@@ -39,7 +40,15 @@ record AppConfig(
             umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoNote, false);
     }
 
+    AppConfig(String primaryInputName, String secondaryInputName, String outputName,
+              boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs,
+              int sostenutoCC, Integer sostenutoNote, Boolean sostenutoNoteToggle) {
+        this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoNote, sostenutoNoteToggle, LogFilter.NONE);
+    }
+
     AppConfig {
+        logFilter = logFilter == null ? LogFilter.NONE : logFilter;
         sostenutoNoteToggle = Boolean.TRUE.equals(sostenutoNoteToggle);
         if (sostenutoNote != null && (sostenutoNote < 0 || sostenutoNote > 127)) {
             throw new IllegalArgumentException("sostenutoNote must be 0..127");

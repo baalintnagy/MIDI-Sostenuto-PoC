@@ -29,6 +29,11 @@ public enum MidiMessageType {
         this.command = command;
     }
 
+    static MidiMessageType from(PackedMidiMessage message) {
+        return ColorMappings.MIDI_MSG_LOOKUP.getOrDefault(
+            message.status() >= 0xF0 ? message.status() : message.command(), OTHER);
+    }
+
     public int command() {
         return command;
     }

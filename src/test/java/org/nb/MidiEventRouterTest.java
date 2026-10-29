@@ -92,6 +92,17 @@ class MidiEventRouterTest {
         }
     }
 
+    @Test
+    void blacklistingControlLogsDoesNotChangeMidiRouting() {
+        var filter = new LogFilter(List.of(new LogFilter.Rule("CC", null, null, null, null)));
+        try (var filteredLogger = new MidiLogger(new PrintStream(OutputStream.nullOutputStream()), false, filter)) {
+            MidiEventRouter router = new MidiEventRouter(
+                new AppConfig("Keys", "", "Out", false, 0, 0, 22), filteredLogger, output);
+            router.routePrimary(PackedMidiMessage.from(MidiMessages.controlChange(3, 22, 127)).value());
+            assertEquals(List.of(new MidiData(ShortMessage.CONTROL_CHANGE, 3, 66, 127)), output.messages());
+        }
+    }
+
     private record MidiData(int command, int channel, int data1, int data2) {
     }
 

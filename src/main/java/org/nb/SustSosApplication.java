@@ -16,13 +16,12 @@ final class SustSosApplication {
     private static final boolean USE_COLORS = true;
 
     void run() throws Exception {
-        MidiLogger logger = new MidiLogger(System.out, USE_COLORS);
-        logger.start();
-
         WinMMMidiSystem midiSystem = new WinMMMidiSystem();
         midiSystem.printDevices(System.out);
 
         AppConfig config = readConfiguration(midiSystem);
+        MidiLogger logger = new MidiLogger(System.out, USE_COLORS, config.logFilter());
+        logger.start();
         WinMMReceiver nativeOutput = midiSystem.openOutput(config.outputName());
         SostenutoReceiver transformer = new SostenutoReceiver(nativeOutput, config.sostenutoSettings());
         MidiEventRouter eventRouter = new MidiEventRouter(config, logger, transformer);

@@ -7,5 +7,10 @@
   "umbrellaTailMs": 1,
   "sostenutoCC": 22,
   "sostenutoNote": 78,
-  "sostenutoNoteToggle": true
+  "sostenutoNoteToggle": true,
+  "logFilter": {
+    "blacklist": [
+      { "type": "CLOCK" }
+    ]
+  }
 }
