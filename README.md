@@ -40,7 +40,7 @@ From Git Bash, run `bash build.sh` for a clean build, tests, JARs, a Windows app
 
 ```powershell
 mvn clean package
-java -jar target/sustsos-1.0.5-all.jar
+java -jar target/sustsos-1.0.6-all.jar
 ```
 
 The package phase also creates a self-contained Windows application image in `target/jpackage-out/SustSos/`; launch `SustSos.exe` there. `build.sh` additionally creates `target/SustSos-windows.zip`. Maven alone does not create the ZIP.
