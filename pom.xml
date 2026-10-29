@@ -111,7 +111,7 @@
                             <resources>
                                 <resource>
                                     <directory>${project.basedir}</directory>
-                                    <includes><include>sustsos.json</include></includes>
+                                    <includes><include>*.json</include></includes>
                                     <filtering>false</filtering>
                                 </resource>
                                 <resource>

@@ -69,13 +69,13 @@ record AppConfig(
         }
     }
 
-    static Path configurationPath() throws Exception {
-        Path local = Path.of("sustsos.json").toAbsolutePath();
-        if (Files.exists(local)) {
-            return local;
-        }
+    static java.util.List<Path> configurationDirectories() throws Exception {
+        Path working = Path.of("").toAbsolutePath();
         Path application = Path.of(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-        return Files.isRegularFile(application) ? application.resolveSibling("sustsos.json") : local;
+        if (Files.isRegularFile(application) && !working.equals(application.getParent())) {
+            return java.util.List.of(working, application.getParent());
+        }
+        return java.util.List.of(working);
     }
 
     static AppConfig parse(String input) {

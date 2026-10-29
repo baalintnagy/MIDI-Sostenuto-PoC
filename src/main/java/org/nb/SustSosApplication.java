@@ -8,10 +8,11 @@ final class SustSosApplication {
     static final String CONFIG_PROMPT =
         "Enter config: <inName>[,<in2Name>],<outName>,<umbrella:true/false>,"
             + "<delayMs>,<tailMs>[,<sostCcIn>][,note:<0..127>][,toggle:<true/false>]\n"
-            + "CC input defaults to 22. Adding note:<number> selects note control instead.\n"
-            + "toggle:true switches on/off once per press; false (default) holds until release.\n"
+            + "Adding note:<number> selects note control instead of CC control.\n"
+            + "toggle:true switches on/off once per press; toggle:false holds until release.\n"
             + "The trigger uses in2Name when provided, otherwise inName.\n"
-            + "Example: Keyboard,Pedal Controller,Loopback,false,0,0,note:60,toggle:true";
+            + "CC example: Keyboard,Pedal Controller,Loopback,false,0,0,22\n"
+            + "Note example: Keyboard,Pedal Controller,Loopback,false,0,0,note:78,toggle:true";
     private static final boolean USE_COLORS = true;
 
     void run() throws Exception {
@@ -21,7 +22,7 @@ final class SustSosApplication {
         WinMMMidiSystem midiSystem = new WinMMMidiSystem();
         midiSystem.printDevices(System.out);
 
-        AppConfig config = readConfiguration();
+        AppConfig config = readConfiguration(midiSystem);
         WinMMReceiver nativeOutput = midiSystem.openOutput(config.outputName());
         SostenutoReceiver transformer = new SostenutoReceiver(nativeOutput, config.sostenutoSettings());
         MidiEventRouter eventRouter = new MidiEventRouter(config, logger, transformer);
@@ -43,27 +44,14 @@ final class SustSosApplication {
         Thread.currentThread().join();
     }
 
-    private static AppConfig readConfiguration() throws Exception {
-        System.out.println(CONFIG_PROMPT);
-        System.out.println("Press ENTER to load " + AppConfig.configurationPath());
+    private static AppConfig readConfiguration(WinMMMidiSystem midiSystem) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        AppConfig config = resolveConfiguration(reader.readLine(), AppConfig.configurationPath());
+        AppConfig config = ConfigurationMenu.select(reader, System.out,
+            ConfigurationMenu.discover(AppConfig.configurationDirectories()),
+            () -> midiSystem.printDevices(System.out));
         System.out.println(config.summary());
         return config;
     }
-
-    static AppConfig resolveConfiguration(String input, java.nio.file.Path path) throws java.io.IOException {
-        if (input == null || input.isBlank()) {
-            return AppConfig.load(path);
-        }
-        try {
-            return AppConfig.parse(input);
-        } catch (RuntimeException exception) {
-            System.err.println("Invalid interactive configuration: " + exception.getMessage() + "; loading " + path);
-            return AppConfig.load(path);
-        }
-    }
-
     private static void printActiveDevices(AppConfig config) {
         System.out.println();
         System.out.println(">> IN : " + config.primaryInputName());

@@ -12,28 +12,27 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Test;
 
 class AppConfigTest {
+    static final String CONFIG_JSON = """
+        {
+          "primaryInputName": "Hammer 88 Pro",
+          "secondaryInputName": "LPProMK3 MIDI",
+          "outputName": "postSSB",
+          "umbrellaEnabled": true,
+          "umbrellaDelayMs": 1,
+          "umbrellaTailMs": 1,
+          "sostenutoCC": 22,
+          "sostenutoNote": null,
+          "sostenutoNoteToggle": false
+        }
+        """;
     @TempDir
     Path directory;
-
-    @Test
-    void usesJsonForBlankEofAndInvalidInputButAllowsInteractiveOverride() throws Exception {
-        Path path = directory.resolve("config.json");
-        Files.writeString(path, Files.readString(Path.of("sustsos.json"))
-            .replace("Hammer 88 Pro", "Custom Keyboard").replace("22", "67"));
-        for (String input : new String[] {"", " ", null, "invalid"}) {
-            AppConfig config = SustSosApplication.resolveConfiguration(input, path);
-            assertEquals("Custom Keyboard", config.primaryInputName());
-            assertEquals(67, config.sostenutoCC());
-        }
-        assertEquals("Keyboard", SustSosApplication.resolveConfiguration(
-            "Keyboard, Loopback, true, 2, 3", directory.resolve("missing.json")).primaryInputName());
-    }
 
     @Test
     void rejectsMissingMalformedIncompleteAndInvalidJson() throws Exception {
         Path path = directory.resolve("config.json");
         assertThrows(IOException.class, () -> AppConfig.load(path));
-        String valid = Files.readString(Path.of("sustsos.json"));
+        String valid = CONFIG_JSON;
         for (String json : new String[] {"{", "{}", "null", valid + " {}",
             valid.replace("true", "null"), valid.replace("true", "\"true\""),
             valid.replace("22", "128"), valid.replace("22", "-1"),
@@ -47,7 +46,7 @@ class AppConfigTest {
     @Test
     void acceptsJsonWithoutSecondaryDevice() throws Exception {
         Path path = directory.resolve("config.json");
-        Files.writeString(path, Files.readString(Path.of("sustsos.json"))
+        Files.writeString(path, CONFIG_JSON
             .replace("LPProMK3 MIDI", ""));
         assertFalse(AppConfig.load(path).hasSecondaryInput());
     }
@@ -91,7 +90,9 @@ class AppConfigTest {
     @Test
     void supportsOptionalNoteInJsonAndInteractiveConfiguration() throws Exception {
         Path path = directory.resolve("note.json");
-        String original = Files.readString(Path.of("sustsos.json"));
+        String original = CONFIG_JSON
+            .replaceAll("\"sostenutoNote\"\\s*:\\s*(null|[0-9]+)", "\"sostenutoNote\": null")
+            .replaceAll("\"sostenutoNoteToggle\"\\s*:\\s*(true|false)", "\"sostenutoNoteToggle\": false");
         Files.writeString(path, original.replace("\"sostenutoNote\": null", "\"sostenutoNote\": 60"));
         assertEquals(60, AppConfig.load(path).sostenutoNote());
         assertFalse(AppConfig.load(path).sostenutoNoteToggle());
@@ -137,8 +138,10 @@ class AppConfigTest {
     }
 
     @Test
-    void preservesDocumentedHardwareDefaults() throws Exception {
-        AppConfig defaults = AppConfig.load(java.nio.file.Path.of("sustsos.json"));
+    void loadsExplicitlySelectedConfiguration() throws Exception {
+        Path selected = directory.resolve("chosen.json");
+        Files.writeString(selected, CONFIG_JSON);
+        AppConfig defaults = AppConfig.load(selected);
 
         assertEquals("Hammer 88 Pro", defaults.primaryInputName());
         assertEquals("LPProMK3 MIDI", defaults.secondaryInputName());

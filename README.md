@@ -37,6 +37,8 @@ Umbrella mode has two timing controls:
 
 ## Build and run
 
+From Git Bash, run `bash build.sh` for a clean build, tests, JARs, a Windows application image, and `target/SustSos-windows.zip`. The script works from any current directory. Close any SustSos instance running from `target/` before building. Maven and Windows PowerShell must be on PATH, with `JAVA_HOME` pointing to JDK 25 or newer.
+
 ```powershell
 mvn clean package
 java -jar target/sustsos-1.0.3-all.jar
@@ -48,7 +50,9 @@ Set `JAVA_HOME` to your JDK 25 (or newer) installation and confirm it with `mvn 
 
 ## Configuration
 
-At startup, SustSos lists the available WinMM inputs and outputs and then prompts for one comma-separated configuration line:
+At startup, SustSos lists the available WinMM inputs and outputs, followed by a numbered menu of JSON configuration filenames. Enter a file's number to load it. Configurations are discovered in the working directory and, for packaged builds, beside the application JAR (`app/`). The list is sorted by filename; a working-directory file takes precedence over a packaged file with the same name. Invalid selections or configuration files display an error and let you choose again.
+
+Choose `0. Other...` to repeat the MIDI input/output list and enter a manual comma-separated configuration:
 
 ```text
 <inName>[,<in2Name>],<outName>,<umbrella>,<delayMs>,<tailMs>[,<sostCcIn>][,note:<0..127>][,toggle:<true/false>]
@@ -66,7 +70,7 @@ At startup, SustSos lists the available WinMM inputs and outputs and then prompt
 | `note:<0..127>` | Optional note number; selects note control instead of the configured CC. |
 | `toggle:<true/false>` | Optional note interpretation: `true` toggles once per press; `false` (default) holds until release. Place this last, after the note field. Ignored in CC mode. |
 
-When a secondary input is configured, only its matching `sostCcIn` messages are processed. With a single input, matching controller messages on the primary input are remapped instead. Empty input (or end of input) loads `sustsos.json`. Invalid configuration input prints the parsing error and loads that same JSON file. Missing or invalid JSON stops startup with a descriptive error.
+When a secondary input is configured, only its matching `sostCcIn` messages are processed. With a single input, matching controller messages on the primary input are remapped instead. Blank or invalid manual input displays an error and repeats the manual prompt. No configuration file is loaded automatically. End of input stops startup.
 
 ### Examples
 
@@ -94,7 +98,7 @@ Umbrella mode disabled:
 USB MIDI Controller,Loopback MIDI Port,false,0,0
 ```
 
-The external fallback configuration is stored in `sustsos.json` at the project root:
+A JSON configuration file contains:
 
 ```json
 {
@@ -110,7 +114,7 @@ The external fallback configuration is stored in `sustsos.json` at the project r
 }
 ```
 
-The file is read using Jackson from the working directory, or, when absent there, from beside the application JAR. The Windows package includes it at `app/sustsos.json`; edit that file to change the packaged defaults. It is never embedded in the JAR or loaded as a classpath resource. The original JSON fields are required; set `secondaryInputName` to an empty string for a single input. Timings must be nonnegative and the controller number must be between 0 and 127.
+The file is read using Jackson from the working directory, or, when absent there, from beside the application JAR. The Windows package includes all project-root `*.json` configurations in `app/`, including `app/sustsos.json`; edit that file to change the packaged defaults. It is never embedded in the JAR or loaded as a classpath resource. The original JSON fields are required; set `secondaryInputName` to an empty string for a single input. Timings must be nonnegative and the controller number must be between 0 and 127.
 
 Device names must match the names printed at startup, ignoring letter case.
 
@@ -170,4 +174,4 @@ Set optional `"sostenutoNoteToggle": true` alongside `"sostenutoNote": 60` for c
 
 Interactive equivalent: `Keyboard,Pedal Controller,Loopback,false,0,0,note:60,toggle:true`.
 
-The checked-in `sustsos.json` includes both optional fields ready to fill: replace `"sostenutoNote": null` with your control note number and set `"sostenutoNoteToggle": true` for click behavior. Leaving the values as `null` and `false` preserves CC22 control. Keep your input/output port names set to the exact names printed at startup. Press ENTER at the configuration prompt to load this file.
+The checked-in `sustsos.json` includes both optional fields ready to fill: replace `"sostenutoNote": null` with your control note number and set `"sostenutoNoteToggle": true` for click behavior. Leaving the values as `null` and `false` preserves CC22 control. Keep your input/output port names set to the exact names printed at startup. Select `sustsos.json` by number at startup to load it. In `0. Other...`, enter a manual configuration; blank input repeats the prompt.
