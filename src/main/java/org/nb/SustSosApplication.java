@@ -5,9 +5,13 @@ import java.io.InputStreamReader;
 
 final class SustSosApplication {
 
-    private static final String CONFIG_PROMPT =
+    static final String CONFIG_PROMPT =
         "Enter config: <inName>[,<in2Name>],<outName>,<umbrella:true/false>,"
-            + "<delayMs>,<tailMs>[,<sostCcIn>]";
+            + "<delayMs>,<tailMs>[,<sostCcIn>][,note:<0..127>][,toggle:<true/false>]\n"
+            + "CC input defaults to 22. Adding note:<number> selects note control instead.\n"
+            + "toggle:true switches on/off once per press; false (default) holds until release.\n"
+            + "The trigger uses in2Name when provided, otherwise inName.\n"
+            + "Example: Keyboard,Pedal Controller,Loopback,false,0,0,note:60,toggle:true";
     private static final boolean USE_COLORS = true;
 
     void run() throws Exception {
@@ -65,9 +69,9 @@ final class SustSosApplication {
         System.out.println(">> IN : " + config.primaryInputName());
         if (config.hasSecondaryInput()) {
             System.out.printf(
-                ">> IN2: %s  (CC%d -> CC66)%n",
+                ">> IN2: %s  (%s -> CC66)%n",
                 config.secondaryInputName(),
-                config.sostenutoController()
+                config.sostenutoTrigger()
             );
         }
         System.out.println(">> OUT: " + config.outputName());

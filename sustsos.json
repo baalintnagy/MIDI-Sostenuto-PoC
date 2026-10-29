@@ -1,9 +1,11 @@
 {
   "primaryInputName": "Hammer 88 Pro",
-  "secondaryInputName": "MIDIIN3 (Hammer 88 Pro)",
+  "secondaryInputName": "LPProMK3 MIDI",
   "outputName": "postSSB",
   "umbrellaEnabled": true,
   "umbrellaDelayMs": 1,
   "umbrellaTailMs": 1,
-  "sostenutoController": 22
+  "sostenutoCC": 22,
+  "sostenutoNote": 78,
+  "sostenutoNoteToggle": true
 }

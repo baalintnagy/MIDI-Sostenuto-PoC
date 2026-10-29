@@ -8,8 +8,8 @@ final class MidiMessages {
     private MidiMessages() {
     }
 
-    static ShortMessage controlChange(int channel, int controller, int value) {
-        return create(ShortMessage.CONTROL_CHANGE, channel, controller, value);
+    static ShortMessage controlChange(int channel, int cc, int value) {
+        return create(ShortMessage.CONTROL_CHANGE, channel, cc, value);
     }
 
     static ShortMessage noteOn(int channel, int note, int velocity) {

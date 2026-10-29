@@ -18,10 +18,10 @@ final class SostenutoReceiver implements Receiver {
     private static final int CHANNEL_COUNT = 16;
     private static final int NOTE_COUNT = 128;
 
-    private static final int SUSTAIN_CONTROLLER = 64;
-    private static final int SOSTENUTO_CONTROLLER = 66;
-    private static final int SOFT_PEDAL_CONTROLLER = 69;
-    private static final int RESET_ALL_CONTROLLERS = 121;
+    private static final int SUSTAIN_CC = 64;
+    private static final int SOSTENUTO_CC = 66;
+    private static final int SOFT_PEDAL_CC = 69;
+    private static final int RESET_ALL_CCS = 121;
     private static final int ALL_NOTES_OFF = 123;
     private static final int ALL_SOUND_OFF = 120;
 
@@ -73,23 +73,23 @@ final class SostenutoReceiver implements Receiver {
     }
 
     private void handleControlChange(ShortMessage message, int channel, long timestamp) {
-        int controller = message.getData1();
-        if (controller == RESET_ALL_CONTROLLERS || controller == ALL_NOTES_OFF) {
+        int cc = message.getData1();
+        if (cc == RESET_ALL_CCS || cc == ALL_NOTES_OFF) {
             panic();
             return;
         }
 
         int value = message.getData2();
-        if (handleController(
-                SUSTAIN_CONTROLLER,
-                controller,
+        if (handleCC(
+                SUSTAIN_CC,
+                cc,
                 value,
                 lastSustainValue,
                 channel,
                 () -> handleSustain(channel, value, timestamp))
-            || handleController(
-                SOSTENUTO_CONTROLLER,
-                controller,
+            || handleCC(
+                SOSTENUTO_CC,
+                cc,
                 value,
                 lastSostenutoValue,
                 channel,
@@ -100,15 +100,15 @@ final class SostenutoReceiver implements Receiver {
         output.send(message, timestamp);
     }
 
-    private static boolean handleController(
-        int expectedController,
-        int controller,
+    private static boolean handleCC(
+        int expectedCC,
+        int cc,
         int value,
         int[] previousValues,
         int channel,
         Runnable handler
     ) {
-        if (controller != expectedController) {
+        if (cc != expectedCC) {
             return false;
         }
         if (value == previousValues[channel]) {
@@ -198,16 +198,16 @@ final class SostenutoReceiver implements Receiver {
         try {
             IntStream.range(0, umbrellaDepth.length()).forEach(channel -> umbrellaDepth.set(channel, 0));
             IntStream.range(0, CHANNEL_COUNT).forEach(channel -> {
-                sendControlChange(channel, SUSTAIN_CONTROLLER, 0, -1);
-                sendControlChange(channel, SOSTENUTO_CONTROLLER, 0, -1);
-                sendControlChange(channel, SOFT_PEDAL_CONTROLLER, 0, -1);
+                sendControlChange(channel, SUSTAIN_CC, 0, -1);
+                sendControlChange(channel, SOSTENUTO_CC, 0, -1);
+                sendControlChange(channel, SOFT_PEDAL_CC, 0, -1);
                 IntStream.range(0, NOTE_COUNT)
                     .filter(note -> pressed[channel][note]
                         || latched[channel][note]
                         || delayedOff[channel][note])
                     .forEach(note -> sendNoteOff(channel, note, -1));
                 sendControlChange(channel, ALL_NOTES_OFF, 0, -1);
-                sendControlChange(channel, RESET_ALL_CONTROLLERS, 0, -1);
+                sendControlChange(channel, RESET_ALL_CCS, 0, -1);
                 sendControlChange(channel, ALL_SOUND_OFF, 0, -1);
                 clearChannel(channel);
             });
@@ -228,8 +228,8 @@ final class SostenutoReceiver implements Receiver {
         lastSostenutoValue[channel] = -1;
     }
 
-    private void sendControlChange(int channel, int controller, int value, long timestamp) {
-        output.send(MidiMessages.controlChange(channel, controller, value), timestamp);
+    private void sendControlChange(int channel, int cc, int value, long timestamp) {
+        output.send(MidiMessages.controlChange(channel, cc, value), timestamp);
     }
 
     private boolean shouldUmbrella(int channel, int note) {
@@ -239,7 +239,7 @@ final class SostenutoReceiver implements Receiver {
     private void sendUmbrellaNoteOn(int channel, int note, int velocity) {
         boolean needsPedalDown = umbrellaDepth.getAndIncrement(channel) == 0;
         if (needsPedalDown) {
-            sendControlChange(channel, SUSTAIN_CONTROLLER, 127, -1);
+            sendControlChange(channel, SUSTAIN_CC, 127, -1);
         }
         scheduler.schedule(() -> {
             output.send(MidiMessages.noteOn(channel, note, velocity), -1);
@@ -258,7 +258,7 @@ final class SostenutoReceiver implements Receiver {
             return;
         }
         if (depth == 0) {
-            sendControlChange(channel, SUSTAIN_CONTROLLER, 0, -1);
+            sendControlChange(channel, SUSTAIN_CC, 0, -1);
         }
     }
 

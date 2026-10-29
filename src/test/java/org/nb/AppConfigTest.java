@@ -23,7 +23,7 @@ class AppConfigTest {
         for (String input : new String[] {"", " ", null, "invalid"}) {
             AppConfig config = SustSosApplication.resolveConfiguration(input, path);
             assertEquals("Custom Keyboard", config.primaryInputName());
-            assertEquals(67, config.sostenutoController());
+            assertEquals(67, config.sostenutoCC());
         }
         assertEquals("Keyboard", SustSosApplication.resolveConfiguration(
             "Keyboard, Loopback, true, 2, 3", directory.resolve("missing.json")).primaryInputName());
@@ -48,7 +48,7 @@ class AppConfigTest {
     void acceptsJsonWithoutSecondaryDevice() throws Exception {
         Path path = directory.resolve("config.json");
         Files.writeString(path, Files.readString(Path.of("sustsos.json"))
-            .replace("MIDIIN3 (Hammer 88 Pro)", ""));
+            .replace("LPProMK3 MIDI", ""));
         assertFalse(AppConfig.load(path).hasSecondaryInput());
     }
 
@@ -62,7 +62,7 @@ class AppConfigTest {
         assertTrue(config.umbrellaEnabled());
         assertEquals(2, config.umbrellaDelayMs());
         assertEquals(3, config.umbrellaTailMs());
-        assertEquals(22, config.sostenutoController());
+        assertEquals(22, config.sostenutoCC());
         assertFalse(config.hasSecondaryInput());
     }
 
@@ -78,14 +78,62 @@ class AppConfigTest {
     }
 
     @Test
-    void parsesCustomSostenutoControllerForEitherInputShape() {
+    void parsesCustomSostenutoCCForEitherInputShape() {
         AppConfig singleInput = AppConfig.parse("Keyboard, Loopback, true, 1, 2, 67");
         AppConfig dualInput = AppConfig.parse("Keyboard, Pedals, Loopback, true, 1, 2, 68");
 
-        assertEquals(67, singleInput.sostenutoController());
+        assertEquals(67, singleInput.sostenutoCC());
         assertFalse(singleInput.hasSecondaryInput());
-        assertEquals(68, dualInput.sostenutoController());
+        assertEquals(68, dualInput.sostenutoCC());
         assertTrue(dualInput.hasSecondaryInput());
+    }
+
+    @Test
+    void supportsOptionalNoteInJsonAndInteractiveConfiguration() throws Exception {
+        Path path = directory.resolve("note.json");
+        String original = Files.readString(Path.of("sustsos.json"));
+        Files.writeString(path, original.replace("\"sostenutoNote\": null", "\"sostenutoNote\": 60"));
+        assertEquals(60, AppConfig.load(path).sostenutoNote());
+        assertFalse(AppConfig.load(path).sostenutoNoteToggle());
+        Files.writeString(path, Files.readString(path).replace("\"sostenutoNoteToggle\": false", "\"sostenutoNoteToggle\": true"));
+        assertTrue(AppConfig.load(path).sostenutoNoteToggle());
+        assertTrue(AppConfig.parse("Keys, Out, false, 0, 0, note:60, toggle:true").sostenutoNoteToggle());
+        assertFalse(AppConfig.parse("Keys, Out, false, 0, 0, note:60, toggle:false").sostenutoNoteToggle());
+        assertThrows(IllegalArgumentException.class,
+            () -> AppConfig.parse("Keys, Out, false, 0, 0, note:60, toggle:yes"));
+        assertEquals(60, AppConfig.parse("Keys, Pedal, Out, false, 0, 0, note:60").sostenutoNote());
+        assertEquals(60, AppConfig.parse("Keys, Out, false, 0, 0, 22, note:60").sostenutoNote());
+        assertThrows(IllegalArgumentException.class,
+            () -> AppConfig.parse("Keys, Out, false, 0, 0, note:128"));
+        Files.writeString(path, original.replace("\"sostenutoNote\": null", "\"sostenutoNote\": -1"));
+        assertThrows(IOException.class, () -> AppConfig.load(path));
+    }
+
+    @Test
+    void acceptsAllDocumentedTriggerFormsOnEitherPort() {
+        for (String devices : new String[] {"Keys,Out", "Keys,Pedal,Out"}) {
+            for (String trigger : new String[] {"", ",67", ",note:60", ",67,note:60"}) {
+                for (String mode : new String[] {"", ",toggle:false", ",toggle:true"}) {
+                    AppConfig config = AppConfig.parse(devices + ",true,1,2" + trigger + mode);
+                    assertEquals(trigger.contains("67") ? 67 : 22, config.sostenutoCC());
+                    assertEquals(trigger.contains("note:") ? Integer.valueOf(60) : null, config.sostenutoNote());
+                    assertEquals(mode.equals(",toggle:true"), config.sostenutoNoteToggle());
+                    assertEquals(devices.contains("Pedal"), config.hasSecondaryInput());
+                }
+            }
+        }
+        for (String input : new String[] {
+            "Keys,Out,maybe,0,0", "Keys,Out,false,0,0,",
+            "Keys,Out,false,0,0,toggle:yes", "Keys,Out,false,0,0,note:128",
+            "Keys,Out,false,0,0,note:-1", "Keys,Out,false,0,0,128",
+            "Keys,Out,false,0,0,toggle:true,note:60"}) {
+            assertThrows(RuntimeException.class, () -> AppConfig.parse(input), input);
+        }
+        assertTrue(SustSosApplication.CONFIG_PROMPT.contains("note:<0..127>"));
+        assertTrue(SustSosApplication.CONFIG_PROMPT.contains("toggle:<true/false>"));
+        String summary = AppConfig.parse("Keys,Out,false,0,0,note:60,toggle:true").summary();
+        assertTrue(summary.contains("Note 60 (toggle)"));
+        assertFalse(summary.contains("sostCcIn"));
     }
 
     @Test
@@ -93,8 +141,8 @@ class AppConfigTest {
         AppConfig defaults = AppConfig.load(java.nio.file.Path.of("sustsos.json"));
 
         assertEquals("Hammer 88 Pro", defaults.primaryInputName());
-        assertEquals("MIDIIN3 (Hammer 88 Pro)", defaults.secondaryInputName());
+        assertEquals("LPProMK3 MIDI", defaults.secondaryInputName());
         assertEquals("postSSB", defaults.outputName());
-        assertEquals(22, defaults.sostenutoController());
+        assertEquals(22, defaults.sostenutoCC());
     }
 }

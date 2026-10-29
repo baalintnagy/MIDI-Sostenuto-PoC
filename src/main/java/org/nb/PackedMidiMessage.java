@@ -32,8 +32,8 @@ record PackedMidiMessage(int value) {
         return (value >> 16) & 0xFF;
     }
 
-    boolean isControlChange(int controller) {
-        return command() == ShortMessage.CONTROL_CHANGE && data1() == controller;
+    boolean isControlChange(int cc) {
+        return command() == ShortMessage.CONTROL_CHANGE && data1() == cc;
     }
 
     ShortMessage toShortMessage() throws InvalidMidiDataException {

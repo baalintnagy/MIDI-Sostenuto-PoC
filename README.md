@@ -51,7 +51,7 @@ Set `JAVA_HOME` to your JDK 25 (or newer) installation and confirm it with `mvn 
 At startup, SustSos lists the available WinMM inputs and outputs and then prompts for one comma-separated configuration line:
 
 ```text
-<inName>[,<in2Name>],<outName>,<umbrella>,<delayMs>,<tailMs>[,<sostCcIn>]
+<inName>[,<in2Name>],<outName>,<umbrella>,<delayMs>,<tailMs>[,<sostCcIn>][,note:<0..127>][,toggle:<true/false>]
 ```
 
 | Field | Meaning |
@@ -63,6 +63,8 @@ At startup, SustSos lists the available WinMM inputs and outputs and then prompt
 | `delayMs` | Umbrella Note On delay in milliseconds. |
 | `tailMs` | Umbrella CC64 tail in milliseconds. |
 | `sostCcIn` | Optional incoming controller to remap to CC66; defaults to CC22. |
+| `note:<0..127>` | Optional note number; selects note control instead of the configured CC. |
+| `toggle:<true/false>` | Optional note interpretation: `true` toggles once per press; `false` (default) holds until release. Place this last, after the note field. Ignored in CC mode. |
 
 When a secondary input is configured, only its matching `sostCcIn` messages are processed. With a single input, matching controller messages on the primary input are remapped instead. Empty input (or end of input) loads `sustsos.json`. Invalid configuration input prints the parsing error and loads that same JSON file. Missing or invalid JSON stops startup with a descriptive error.
 
@@ -97,16 +99,18 @@ The external fallback configuration is stored in `sustsos.json` at the project r
 ```json
 {
   "primaryInputName": "Hammer 88 Pro",
-  "secondaryInputName": "MIDIIN3 (Hammer 88 Pro)",
+  "secondaryInputName": "LPProMK3 MIDI",
   "outputName": "postSSB",
   "umbrellaEnabled": true,
   "umbrellaDelayMs": 1,
   "umbrellaTailMs": 1,
-  "sostenutoController": 22
+  "sostenutoCC": 22,
+  "sostenutoNote": null,
+  "sostenutoNoteToggle": false
 }
 ```
 
-The file is read using Jackson from the working directory, or, when absent there, from beside the application JAR. The Windows package includes it at `app/sustsos.json`; edit that file to change the packaged defaults. It is never embedded in the JAR or loaded as a classpath resource. All JSON fields are required; set `secondaryInputName` to an empty string for a single input. Timings must be nonnegative and the controller number must be between 0 and 127.
+The file is read using Jackson from the working directory, or, when absent there, from beside the application JAR. The Windows package includes it at `app/sustsos.json`; edit that file to change the packaged defaults. It is never embedded in the JAR or loaded as a classpath resource. The original JSON fields are required; set `secondaryInputName` to an empty string for a single input. Timings must be nonnegative and the controller number must be between 0 and 127.
 
 Device names must match the names printed at startup, ignoring letter case.
 
@@ -145,3 +149,25 @@ Prebuilt application images are available from the [GitHub releases page](https:
 ## License
 
 SustSos is released under the [MIT License](LICENSE).
+
+### Using a note to control sostenuto
+
+Add `"sostenutoNote": 60` to `sustsos.json` to use MIDI note number 60 as the sostenuto control. Keep the existing `sostenutoCC` field; omitting `sostenutoNote` (or setting it to `null`) selects CC control as before.
+
+In note mode, Note On with any positive velocity engages sostenuto; Note Off or Note On with velocity zero releases it. The triggering note is consumed rather than played. Other notes on the primary input continue to play normally. Note numbers must be 0..127.
+
+The input port selection is unchanged: a nonempty `secondaryInputName` selects that port and filters out all messages except the configured trigger. With an empty secondary name, the trigger is read from the primary input. The incoming MIDI channel is preserved, so the trigger controls sostenuto on that channel.
+
+Interactive configuration also accepts a final `note:<number>` field, for example:
+
+```text
+Keyboard,Pedal Controller,Loopback,false,0,0,note:60
+```
+
+An existing CC number may precede the note field, such as `Keyboard,Loopback,false,0,0,22,note:60`. In note mode, the configured CC number is not remapped; ordinary primary-input CC messages retain their existing handling, including native CC66 sostenuto.
+
+Set optional `"sostenutoNoteToggle": true` alongside `"sostenutoNote": 60` for click/toggle behavior: the first press engages sostenuto, the next press releases it. Release messages (Note Off or zero-velocity Note On) only prepare for the next press. Repeated Note On messages while held do not toggle again. State is independent per MIDI channel. Omit the boolean or set it to `false` for hold/release behavior. This option affects note control only; CC behavior is unchanged.
+
+Interactive equivalent: `Keyboard,Pedal Controller,Loopback,false,0,0,note:60,toggle:true`.
+
+The checked-in `sustsos.json` includes both optional fields ready to fill: replace `"sostenutoNote": null` with your control note number and set `"sostenutoNoteToggle": true` for click behavior. Leaving the values as `null` and `false` preserves CC22 control. Keep your input/output port names set to the exact names printed at startup. Press ENTER at the configuration prompt to load this file.

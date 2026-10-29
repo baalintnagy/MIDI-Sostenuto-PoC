@@ -1,6 +1,7 @@
 package org.nb;
 
 import java.util.Locale;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -10,34 +11,51 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
 record AppConfig(
-    String primaryInputName,
-    String secondaryInputName,
-    String outputName,
-    boolean umbrellaEnabled,
-    int umbrellaDelayMs,
-    int umbrellaTailMs,
-    int sostenutoController
+    @JsonProperty(required = true) String primaryInputName,
+    @JsonProperty(required = true) String secondaryInputName,
+    @JsonProperty(required = true) String outputName,
+    @JsonProperty(required = true) boolean umbrellaEnabled,
+    @JsonProperty(required = true) int umbrellaDelayMs,
+    @JsonProperty(required = true) int umbrellaTailMs,
+    @JsonProperty(required = true) int sostenutoCC,
+    Integer sostenutoNote,
+    Boolean sostenutoNoteToggle
 ) {
 
-    private static final int DEFAULT_SOSTENUTO_CONTROLLER = 22;
+    private static final int DEFAULT_SOSTENUTO_CC = 22;
     private static final int SOSTENUTO_THRESHOLD = 10;
     private static final int SOSTENUTO_HYSTERESIS = 2;
 
+    AppConfig(String primaryInputName, String secondaryInputName, String outputName,
+              boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs, int sostenutoCC) {
+        this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, null);
+    }
+
+    AppConfig(String primaryInputName, String secondaryInputName, String outputName,
+              boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs,
+              int sostenutoCC, Integer sostenutoNote) {
+        this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoNote, false);
+    }
+
     AppConfig {
+        sostenutoNoteToggle = Boolean.TRUE.equals(sostenutoNoteToggle);
+        if (sostenutoNote != null && (sostenutoNote < 0 || sostenutoNote > 127)) {
+            throw new IllegalArgumentException("sostenutoNote must be 0..127");
+        }
         if (primaryInputName == null || primaryInputName.isBlank()
             || outputName == null || outputName.isBlank() || secondaryInputName == null) {
             throw new IllegalArgumentException("Input/output names are required; use an empty secondaryInputName for one input");
         }
-        if (umbrellaDelayMs < 0 || umbrellaTailMs < 0 || sostenutoController < 0 || sostenutoController > 127) {
-            throw new IllegalArgumentException("Timings must be nonnegative and sostenutoController must be 0..127");
+        if (umbrellaDelayMs < 0 || umbrellaTailMs < 0 || sostenutoCC < 0 || sostenutoCC > 127) {
+            throw new IllegalArgumentException("Timings must be nonnegative and sostenutoCC must be 0..127");
         }
     }
 
     static AppConfig load(Path path) throws IOException {
         try {
             AppConfig config = JsonMapper.builder()
-                .enable(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
-                .enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES)
                 .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
                 .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                 .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
@@ -62,15 +80,38 @@ record AppConfig(
 
     static AppConfig parse(String input) {
         String line = Objects.requireNonNull(input, "input").trim();
-        String[] tokens = line.split("\\s*,\\s*");
-        boolean hasCustomSostenutoController = hasCustomSostenutoController(tokens);
+        boolean toggle = false;
+        int modeSeparator = line.lastIndexOf(',');
+        String mode = line.substring(modeSeparator + 1).trim().toLowerCase(Locale.ROOT);
+        if (mode.startsWith("toggle:")) {
+            String enabled = mode.substring(7).trim();
+            if (!enabled.equals("true") && !enabled.equals("false")) {
+                throw new IllegalArgumentException("toggle must be true or false");
+            }
+            toggle = Boolean.parseBoolean(enabled);
+            line = line.substring(0, modeSeparator).trim();
+        }
+        Integer note = null;
+        int triggerSeparator = line.lastIndexOf(',');
+        String trigger = line.substring(triggerSeparator + 1).trim();
+        if (trigger.toLowerCase(Locale.ROOT).startsWith("note:")) {
+            note = Integer.parseInt(trigger.substring(5).trim());
+            line = line.substring(0, triggerSeparator).trim();
+        }
+        String[] tokens = line.split("\\s*,\\s*", -1);
+        boolean hasCustomSostenutoCC = hasCustomSostenutoCC(tokens);
 
         int tailSeparator = line.lastIndexOf(',');
-        int sostenutoController = DEFAULT_SOSTENUTO_CONTROLLER;
-        if (hasCustomSostenutoController) {
-            sostenutoController = Integer.parseInt(line.substring(tailSeparator + 1).trim());
+        int sostenutoCC = DEFAULT_SOSTENUTO_CC;
+        if (hasCustomSostenutoCC) {
+            sostenutoCC = Integer.parseInt(line.substring(tailSeparator + 1).trim());
             line = line.substring(0, tailSeparator).trim();
             tailSeparator = line.lastIndexOf(',');
+        }
+
+        int fieldCount = line.split(",", -1).length;
+        if (fieldCount != 5 && fieldCount != 6) {
+            throw new IllegalArgumentException("Expected primary input, optional secondary input, output, umbrella, delay and tail");
         }
 
         int delaySeparator = line.lastIndexOf(',', tailSeparator - 1);
@@ -80,8 +121,11 @@ record AppConfig(
 
         int umbrellaTailMs = Integer.parseInt(line.substring(tailSeparator + 1).trim());
         int umbrellaDelayMs = Integer.parseInt(line.substring(delaySeparator + 1, tailSeparator).trim());
-        boolean umbrellaEnabled = Boolean.parseBoolean(
-            line.substring(umbrellaSeparator + 1, delaySeparator).trim());
+        String umbrella = line.substring(umbrellaSeparator + 1, delaySeparator).trim();
+        if (!umbrella.equalsIgnoreCase("true") && !umbrella.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException("umbrella must be true or false");
+        }
+        boolean umbrellaEnabled = Boolean.parseBoolean(umbrella);
         String outputName = line.substring(outputSeparator + 1, umbrellaSeparator).trim();
 
         String primaryInputName;
@@ -101,11 +145,13 @@ record AppConfig(
             umbrellaEnabled,
             umbrellaDelayMs,
             umbrellaTailMs,
-            sostenutoController
+            sostenutoCC,
+            note,
+            toggle
         );
     }
 
-    private static boolean hasCustomSostenutoController(String[] tokens) {
+    private static boolean hasCustomSostenutoCC(String[] tokens) {
         if (tokens.length < 3) {
             return false;
         }
@@ -127,25 +173,19 @@ record AppConfig(
         );
     }
 
+    String sostenutoTrigger() {
+        return sostenutoNote == null ? "CC" + sostenutoCC : "Note " + sostenutoNote + (sostenutoNoteToggle ? " (toggle)" : " (hold)");
+    }
+
     String summary() {
-        if (!hasSecondaryInput()) {
-            return ">> Config: in: %s out: %s umbrella: %s delay: %d tail=%d sostCcIn: %d".formatted(
-                primaryInputName,
-                outputName,
-                umbrellaEnabled,
-                umbrellaDelayMs,
-                umbrellaTailMs,
-                sostenutoController
-            );
-        }
-        return ">> Config: in: %s in2: %s out: %s umbrella: %s delay: %d tail: %d sostCcIn: %d".formatted(
+        return ">> Config: in: %s%s out: %s umbrella: %s delay: %d tail: %d sostenuto input: %s".formatted(
             primaryInputName,
-            secondaryInputName,
+            hasSecondaryInput() ? " in2: " + secondaryInputName : "",
             outputName,
             umbrellaEnabled,
             umbrellaDelayMs,
             umbrellaTailMs,
-            sostenutoController
+            sostenutoTrigger()
         );
     }
 }
