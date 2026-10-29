@@ -19,7 +19,10 @@ record AppConfig(
     @JsonProperty(required = true) int umbrellaTailMs,
     @JsonProperty(required = true) int sostenutoCC,
     @JsonProperty(required = true) boolean sostenutoToggle,
+    Boolean invertCC,
     Integer sostenutoNote,
+    Integer inputChannel,
+    Integer outputChannel,
     LogFilter logFilter
 ) {
 
@@ -44,10 +47,23 @@ record AppConfig(
               boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs,
               int sostenutoCC, boolean sostenutoToggle, Integer sostenutoNote) {
         this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
-            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoToggle, sostenutoNote, LogFilter.NONE);
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoToggle, sostenutoNote, null, null, LogFilter.NONE);
+    }
+
+    AppConfig(String primaryInputName, String secondaryInputName, String outputName,
+              boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs,
+              int sostenutoCC, boolean sostenutoToggle, Integer sostenutoNote,
+              Integer inputChannel, Integer outputChannel, LogFilter logFilter) {
+        this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoToggle, null,
+            sostenutoNote, inputChannel, outputChannel, logFilter);
     }
 
     AppConfig {
+        if (inputChannel != null && (inputChannel < 1 || inputChannel > 16)
+            || outputChannel != null && (outputChannel < 1 || outputChannel > 16)) {
+            throw new IllegalArgumentException("inputChannel and outputChannel must be null or 1..16");
+        }
         logFilter = logFilter == null ? LogFilter.NONE : logFilter;
         if (sostenutoNote != null && (sostenutoNote < 0 || sostenutoNote > 127)) {
             throw new IllegalArgumentException("sostenutoNote must be 0..127");
@@ -66,6 +82,7 @@ record AppConfig(
             AppConfig config = JsonMapper.builder()
                 .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
                 .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
                 .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
                 .build().readValue(path.toFile(), AppConfig.class);
             if (config == null) {
@@ -195,6 +212,7 @@ record AppConfig(
             umbrellaDelayMs,
             umbrellaTailMs,
             sostenutoTrigger()
-        );
+        ) + " input channel: " + (inputChannel == null ? "all" : inputChannel)
+            + " output channel: " + (outputChannel == null ? "preserve" : outputChannel);
     }
 }

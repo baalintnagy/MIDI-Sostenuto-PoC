@@ -111,7 +111,10 @@ USB MIDI Controller,Loopback MIDI Port,false,0,0
   "umbrellaTailMs": 1,
   "sostenutoCC": 22,
   "sostenutoToggle": false,
-  "sostenutoNote": null
+  "invertCC": false,
+  "sostenutoNote": null,
+  "inputChannel": null,
+  "outputChannel": null
 }
 ```
 
@@ -127,7 +130,10 @@ USB MIDI Controller,Loopback MIDI Port,false,0,0
   "umbrellaTailMs": 1,
   "sostenutoCC": 22,
   "sostenutoToggle": true,
+  "invertCC": false,
   "sostenutoNote": 78,
+  "inputChannel": null,
+  "outputChannel": null,
   "logFilter": {
     "blacklist": [
       { "type": "CLOCK" }
@@ -138,7 +144,7 @@ USB MIDI Controller,Loopback MIDI Port,false,0,0
 
 The selected file is read using Jackson. There is no special configuration filename or automatic fallback. The project currently includes `Hammer88Pro.json` (CC22 control) and `Hammer88Pro_n_Launchpad.json` (note 78 toggle control with clock logging suppressed). The Windows package copies all project-root `*.json` files into `app/`; you can add or edit configurations there or in the working directory. Configurations are not embedded in the JAR.
 
-The eight fields from `primaryInputName` through `sostenutoToggle` are required. `sostenutoToggle` must be an explicit `true` or `false`; null is rejected. The nullable fields `sostenutoNote` and `logFilter` are optional and listed last. Use an empty `secondaryInputName` for a single input. Timings must be nonnegative; CC and note numbers must be 0..127. Unknown properties or invalid values reject the file and return to the selection menu.
+The eight fields from `primaryInputName` through `sostenutoToggle` are required. `sostenutoToggle` must be an explicit `true` or `false`; null is rejected. The nullable fields `invertCC`, `sostenutoNote`, `inputChannel`, `outputChannel`, and `logFilter` are optional and listed last. Use an empty `secondaryInputName` for a single input. Timings must be nonnegative; CC and note numbers must be 0..127. Unknown properties or invalid values reject the file and return to the selection menu.
 
 Device names must match the names printed at startup, ignoring letter case.
 
@@ -171,6 +177,19 @@ Set `"sostenutoNote": null`, `"sostenutoCC": 22`, and `"sostenutoToggle": true` 
 CC toggle mode uses the existing sostenuto thresholds: a value of 10 or above counts as pressed, and 8 or below counts as released. Values in between retain the previous pressed state. Repeated high values do not toggle again. Toggle and pressed states are independent per MIDI channel. With toggle disabled, incoming CC values retain their existing hold/release behavior.
 
 Manual equivalent: `Keyboard,Pedal Controller,Loopback,false,0,0,22,toggle:true`.
+### Inverted CC input
+
+Set `"invertCC": true` for an inversely polarized CC foot-switch. Only the configured sostenuto CC is inverted, using `127 - value`, before hold/release thresholds or toggle press detection. With typical switch values, incoming 0 becomes pressed (127), and incoming 127 becomes released (0). There is no polarity autodetection.
+
+`invertCC` is nullable: omitted, null, or false leaves CC values unchanged. Note mode ignores this property. Both example JSON files set it to false. Logs and log filtering see the original incoming values. This option is JSON-only; manual configuration leaves inversion disabled.
+### MIDI channels
+
+JSON configurations may set `inputChannel` and `outputChannel` to integers 1..16 or `null`. Both example files use `null` for each field. Omitting either field has the same effect as `null`.
+
+- `inputChannel`: accepts channel messages only on this channel, on both primary and secondary inputs. `null` accepts all channels. Incoming messages are logged before channel filtering, subject to the log blacklist.
+- `outputChannel`: remaps all outgoing channel messages, including generated Note Off, umbrella CC, and panic messages. `null` preserves their original channels. Remapping happens after sostenuto processing; internal pedal and note state remains separate per original input channel.
+
+System messages do not have channels: primary-input system messages bypass the input-channel filter and retain their status on output. The secondary input continues to accept only the configured sostenuto trigger. Channel selection is JSON-only; manual configuration uses all input channels and preserves output channels.
 ### Log filtering
 
 Add an optional `logFilter` object to any JSON configuration:
@@ -212,7 +231,7 @@ Input callbacks perform message routing, a dedicated logger thread formats diagn
 - `SustSos` and `SustSosApplication`: entry point and application lifecycle.
 - `AppConfig` and `ConfigurationMenu`: immutable configuration, JSON discovery, numbered selection, and manual input parsing.
 - `SostenutoReceiver`: sustain, sostenuto, and umbrella state machine.
-- `MidiEventRouter`, `PackedMidiMessage`, and `MidiMessages`: MIDI decoding, remapping, and construction.
+- `MidiEventRouter`, `ChannelOutputReceiver`, `PackedMidiMessage`, and `MidiMessages`: MIDI decoding, remapping, and construction.
 - `WinMM*`: native WinMM bindings and resource ownership.
 - `MidiLogger`, `MidiMessageType`, `ColorMappings`, `LogFilter`, and `AnsiColor`: asynchronous diagnostics.
 

@@ -25,6 +25,7 @@ final class MidiEventRouter {
     void routePrimary(int value) {
         logger.log(value, config.primaryInputName());
         PackedMidiMessage message = new PackedMidiMessage(value);
+        if (!acceptsChannel(message)) return;
         boolean remapSostenuto = !config.hasSecondaryInput()
             && isSostenutoInput(message);
         forward(message, remapSostenuto);
@@ -33,9 +34,15 @@ final class MidiEventRouter {
     void routeSecondary(int value) {
         logger.log(value, config.secondaryInputName());
         PackedMidiMessage message = new PackedMidiMessage(value);
+        if (!acceptsChannel(message)) return;
         if (isSostenutoInput(message)) {
             forward(message, true);
         }
+    }
+
+    private boolean acceptsChannel(PackedMidiMessage message) {
+        return config.inputChannel() == null || message.status() >= 0xF0
+            || message.channel() + 1 == config.inputChannel();
     }
 
     private boolean isSostenutoInput(PackedMidiMessage message) {
@@ -51,6 +58,9 @@ final class MidiEventRouter {
             if (remapSostenuto) {
                 int value = message.data2();
                 boolean noteInput = config.sostenutoNote() != null;
+                if (!noteInput && Boolean.TRUE.equals(config.invertCC())) {
+                    value = 127 - value;
+                }
                 int channel = message.channel();
                 if (config.sostenutoToggle()) {
                     boolean wasPressed = triggerPressed[channel];

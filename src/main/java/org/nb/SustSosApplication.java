@@ -23,7 +23,8 @@ final class SustSosApplication {
         MidiLogger logger = new MidiLogger(System.out, USE_COLORS, config.logFilter());
         logger.start();
         WinMMReceiver nativeOutput = midiSystem.openOutput(config.outputName());
-        SostenutoReceiver transformer = new SostenutoReceiver(nativeOutput, config.sostenutoSettings());
+        SostenutoReceiver transformer = new SostenutoReceiver(
+            new ChannelOutputReceiver(nativeOutput, config.outputChannel()), config.sostenutoSettings());
         MidiEventRouter eventRouter = new MidiEventRouter(config, logger, transformer);
 
         WinMMInput primaryInput = midiSystem.openInput(config.primaryInputName(), eventRouter::routePrimary);
