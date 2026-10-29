@@ -9,6 +9,18 @@ public enum MidiMessageType {
     CH_PR(0xD0),
     POLY_AT(0xA0),
     PC(0xC0),
+    SYSEX_START(0xF0),
+    TIME_CODE(0xF1),
+    SONG_POSITION(0xF2),
+    SONG_SELECT(0xF3),
+    TUNE_REQUEST(0xF6),
+    SYSEX_END(0xF7),
+    CLOCK(0xF8),
+    START(0xFA),
+    CONTINUE(0xFB),
+    STOP(0xFC),
+    ACTIVE_SENSING(0xFE),
+    SYSTEM_RESET(0xFF),
     OTHER(0x00);
 
     private final int command;

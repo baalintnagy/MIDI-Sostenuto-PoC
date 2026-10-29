@@ -5,17 +5,9 @@ import java.util.Set;
 
 public final class ColorMappings {
 
-    public static final Map<Integer, MidiMessageType> MIDI_MSG_LOOKUP = Map.of(
-        MidiMessageType.NOTE_ON.command(), MidiMessageType.NOTE_ON,
-        MidiMessageType.NOTE_OFF.command(), MidiMessageType.NOTE_OFF,
-        MidiMessageType.CC.command(), MidiMessageType.CC,
-        MidiMessageType.P_BEND.command(), MidiMessageType.P_BEND,
-        MidiMessageType.CH_PR.command(), MidiMessageType.CH_PR,
-        MidiMessageType.POLY_AT.command(), MidiMessageType.POLY_AT,
-        MidiMessageType.PC.command(), MidiMessageType.PC,
-        MidiMessageType.OTHER.command(), MidiMessageType.OTHER
-    );
-
+    public static final Map<Integer, MidiMessageType> MIDI_MSG_LOOKUP =
+        java.util.Arrays.stream(MidiMessageType.values()).collect(
+            java.util.stream.Collectors.toUnmodifiableMap(MidiMessageType::command, type -> type));
     public static final Map<MidiMessageType, String> MIDI_MSG_COLOR = Map.of(
         MidiMessageType.NOTE_ON, AnsiColor.CYAN.bright(),
         MidiMessageType.NOTE_OFF, AnsiColor.CYAN.dark(),

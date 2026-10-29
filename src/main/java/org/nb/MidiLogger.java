@@ -12,7 +12,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 final class MidiLogger implements AutoCloseable {
 
     private static final String RAW_COLORED_FORMAT = """
-        ${RESET}CH:${RESET} %s%2d${RESET} ${RESET}|${RESET} %s%-9s${RESET} ${RESET}|${RESET} \
+        ${RESET}CH:${RESET} %s%2s${RESET} ${RESET}|${RESET} %s%-16s${RESET} ${RESET}|${RESET} \
         ${RESET}D1:${RESET} %s%3d${RESET} ${RESET}|${RESET} \
         ${RESET}D2:${RESET} %s%3d${RESET} ${RESET}|${RESET} \
         ${RESET}Status:${RESET} %s%3d${RESET} ${RESET}|${RESET} \
@@ -20,7 +20,7 @@ final class MidiLogger implements AutoCloseable {
         """;
     private static final String COLORED_FORMAT = RAW_COLORED_FORMAT.replace("${RESET}", RESET);
     private static final String PLAIN_FORMAT =
-        "CH: %2d | %-9s | D1: %3d | D2: %3d | Status: %3d | [%s] | %s ns%n";
+        "CH: %2s | %-16s | D1: %3d | D2: %3d | Status: %3d | [%s] | %s ns%n";
 
     private final BlockingQueue<LogEntry> queue = new LinkedBlockingQueue<>();
     private final PrintStream output;
@@ -59,10 +59,10 @@ final class MidiLogger implements AutoCloseable {
 
     private void write(LogEntry entry) {
         PackedMidiMessage message = entry.message();
-        int channel = message.channel() + 1;
+        String channel = message.status() < 0xF0 ? Integer.toString(message.channel() + 1) : "--";
         long now = System.nanoTime();
         MidiMessageType messageType = MIDI_MSG_LOOKUP.getOrDefault(
-            message.command(),
+            message.status() >= 0xF0 ? message.status() : message.command(),
             MidiMessageType.OTHER
         );
 
@@ -80,7 +80,8 @@ final class MidiLogger implements AutoCloseable {
             return;
         }
 
-        String messageColor = MIDI_MSG_COLOR.getOrDefault(messageType, AnsiColor.RED.bright());
+        String messageColor = MIDI_MSG_COLOR.getOrDefault(messageType,
+            messageType == MidiMessageType.OTHER ? AnsiColor.RED.bright() : AnsiColor.GRAY.bright());
         output.println(COLORED_FORMAT.formatted(
             AnsiColor.WHITE.dark(), channel,
             messageColor, messageType,
