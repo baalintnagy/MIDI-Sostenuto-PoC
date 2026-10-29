@@ -74,7 +74,7 @@ class MidiEventRouterTest {
         for (String secondary : new String[] {"", "Pedals"}) {
             output.messages().clear();
             MidiEventRouter router = new MidiEventRouter(
-                new AppConfig("Keys", secondary, "Out", false, 0, 0, 22, 60, true), logger, output);
+                new AppConfig("Keys", secondary, "Out", false, 0, 0, 22, true, 60), logger, output);
             java.util.function.IntConsumer route = secondary.isEmpty() ? router::routePrimary : router::routeSecondary;
             route.accept(PackedMidiMessage.from(MidiMessages.noteOff(2, 60)).value());
             route.accept(PackedMidiMessage.from(MidiMessages.noteOn(2, 60, 1)).value());
@@ -101,6 +101,44 @@ class MidiEventRouterTest {
             router.routePrimary(PackedMidiMessage.from(MidiMessages.controlChange(3, 22, 127)).value());
             assertEquals(List.of(new MidiData(ShortMessage.CONTROL_CHANGE, 3, 66, 127)), output.messages());
         }
+    }
+
+    @Test
+    void ccToggleUsesPressEdgesHysteresisAndIndependentChannelsOnEitherPort() {
+        for (String secondary : new String[] {"", "Pedals"}) {
+            output.messages().clear();
+            MidiEventRouter router = new MidiEventRouter(
+                new AppConfig("Keys", secondary, "Out", false, 0, 0, 22, true, null), logger, output);
+            java.util.function.IntConsumer route = secondary.isEmpty() ? router::routePrimary : router::routeSecondary;
+            for (int value : new int[] {0, 9, 10, 127, 127, 9, 8, 9, 10, 0}) {
+                route.accept(PackedMidiMessage.from(MidiMessages.controlChange(2, 22, value)).value());
+            }
+            route.accept(PackedMidiMessage.from(MidiMessages.controlChange(3, 22, 127)).value());
+            route.accept(PackedMidiMessage.from(MidiMessages.controlChange(2, 22, 127)).value());
+            assertEquals(List.of(
+                new MidiData(ShortMessage.CONTROL_CHANGE, 2, 66, 127),
+                new MidiData(ShortMessage.CONTROL_CHANGE, 2, 66, 0),
+                new MidiData(ShortMessage.CONTROL_CHANGE, 3, 66, 127),
+                new MidiData(ShortMessage.CONTROL_CHANGE, 2, 66, 127)), output.messages());
+        }
+    }
+
+    @Test
+    void ccHoldPreservesValuesAndToggleOnlyUsesConfiguredInput() {
+        MidiEventRouter hold = new MidiEventRouter(
+            new AppConfig("Keys", "", "Out", false, 0, 0, 22, false, null), logger, output);
+        hold.routePrimary(PackedMidiMessage.from(MidiMessages.controlChange(1, 22, 10)).value());
+        hold.routePrimary(PackedMidiMessage.from(MidiMessages.controlChange(1, 22, 8)).value());
+        MidiEventRouter toggle = new MidiEventRouter(
+            new AppConfig("Keys", "Pedals", "Out", false, 0, 0, 22, true, null), logger, output);
+        toggle.routePrimary(PackedMidiMessage.from(MidiMessages.controlChange(1, 22, 127)).value());
+        toggle.routeSecondary(PackedMidiMessage.from(MidiMessages.controlChange(1, 21, 127)).value());
+        toggle.routeSecondary(PackedMidiMessage.from(MidiMessages.controlChange(1, 22, 127)).value());
+        assertEquals(List.of(
+            new MidiData(ShortMessage.CONTROL_CHANGE, 1, 66, 10),
+            new MidiData(ShortMessage.CONTROL_CHANGE, 1, 66, 8),
+            new MidiData(ShortMessage.CONTROL_CHANGE, 1, 22, 127),
+            new MidiData(ShortMessage.CONTROL_CHANGE, 1, 66, 127)), output.messages());
     }
 
     private record MidiData(int command, int channel, int data1, int data2) {

@@ -11,11 +11,13 @@ final class MidiEventRouter {
     private final AppConfig config;
     private final MidiLogger logger;
     private final Receiver receiver;
-    private final boolean[] notePressed = new boolean[16];
-    private final boolean[] noteToggledOn = new boolean[16];
+    private final SostenutoSettings settings;
+    private final boolean[] triggerPressed = new boolean[16];
+    private final boolean[] triggerToggledOn = new boolean[16];
 
     MidiEventRouter(AppConfig config, MidiLogger logger, Receiver receiver) {
         this.config = config;
+        this.settings = config.sostenutoSettings();
         this.logger = logger;
         this.receiver = receiver;
     }
@@ -48,20 +50,22 @@ final class MidiEventRouter {
         try {
             if (remapSostenuto) {
                 int value = message.data2();
-                if (config.sostenutoNote() != null) {
-                    boolean pressed = message.command() == ShortMessage.NOTE_ON && message.data2() > 0;
-                    int channel = message.channel();
-                    if (config.sostenutoNoteToggle()) {
-                        boolean wasPressed = notePressed[channel];
-                        notePressed[channel] = pressed;
-                        if (!pressed || wasPressed) {
-                            return;
-                        }
-                        noteToggledOn[channel] = !noteToggledOn[channel];
-                        value = noteToggledOn[channel] ? 127 : 0;
-                    } else {
-                        value = pressed ? 127 : 0;
+                boolean noteInput = config.sostenutoNote() != null;
+                int channel = message.channel();
+                if (config.sostenutoToggle()) {
+                    boolean wasPressed = triggerPressed[channel];
+                    int releaseThreshold = Math.max(0, settings.activationThreshold() - settings.hysteresis());
+                    boolean pressed = noteInput
+                        ? message.command() == ShortMessage.NOTE_ON && value > 0
+                        : wasPressed ? value > releaseThreshold : value >= settings.activationThreshold();
+                    triggerPressed[channel] = pressed;
+                    if (!pressed || wasPressed) {
+                        return;
                     }
+                    triggerToggledOn[channel] = !triggerToggledOn[channel];
+                    value = triggerToggledOn[channel] ? 127 : 0;
+                } else if (noteInput) {
+                    value = message.command() == ShortMessage.NOTE_ON && value > 0 ? 127 : 0;
                 }
                 receiver.send(
                     MidiMessages.controlChange(message.channel(), SOSTENUTO_CC,

@@ -13,7 +13,7 @@ You need at least one loopback MIDI port between SustSos and your DAW or instrum
 - Retains Note Off messages while sustain or sostenuto owns a note.
 - Hands retained notes between sustain and sostenuto without an audible release.
 - Accepts a primary MIDI input plus an optional dedicated pedal/control input.
-- Remaps a configurable CC or Note On/Off trigger to internal CC66, with optional note toggle control.
+- Remaps a configurable CC or Note On/Off trigger to internal CC66, with optional toggle control.
 - Suppresses the emulated CC64 and CC66 messages instead of forwarding them to the output.
 - Logs incoming MIDI messages asynchronously with color-coded console output and optional JSON blacklist filtering.
 - Uses WinMM directly through JNA for low-overhead MIDI I/O.
@@ -54,7 +54,7 @@ At startup, SustSos lists the available WinMM inputs and outputs, followed by a 
 Choose `0. Other...` to repeat the MIDI input/output list and enter a manual comma-separated configuration:
 
 ```text
-<inName>[,<in2Name>],<outName>,<umbrella>,<delayMs>,<tailMs>[,<sostCcIn>][,note:<0..127>][,toggle:<true/false>]
+<inName>[,<in2Name>],<outName>,<umbrella>,<delayMs>,<tailMs>[,<sostCcIn>][,toggle:<true/false>][,note:<0..127>]
 ```
 
 | Field | Meaning |
@@ -66,8 +66,8 @@ Choose `0. Other...` to repeat the MIDI input/output list and enter a manual com
 | `delayMs` | Umbrella Note On delay in milliseconds. |
 | `tailMs` | Umbrella CC64 tail in milliseconds. |
 | `sostCcIn` | Optional incoming controller to remap to CC66; defaults to CC22. |
+| `toggle:<true/false>` | Optional CC or note interpretation: `true` toggles once per press; `false` (default) holds until release. Place this after the optional CC number and before the optional note field. The nullable note is last. |
 | `note:<0..127>` | Optional note number; selects note control instead of the configured CC. |
-| `toggle:<true/false>` | Optional note interpretation: `true` toggles once per press; `false` (default) holds until release. Place this last, after the note field. Ignored in CC mode. |
 
 When a secondary input is configured, only its matching sostenuto trigger messages are processed; other messages from that port are ignored after logging. With a single input, the trigger is read from the primary input. Other primary-input messages continue through normal MIDI processing. Blank or invalid manual input displays an error and repeats the manual prompt. No configuration file is loaded automatically. End of input stops startup.
 
@@ -110,8 +110,8 @@ USB MIDI Controller,Loopback MIDI Port,false,0,0
   "umbrellaDelayMs": 1,
   "umbrellaTailMs": 1,
   "sostenutoCC": 22,
-  "sostenutoNote": null,
-  "sostenutoNoteToggle": null
+  "sostenutoToggle": false,
+  "sostenutoNote": null
 }
 ```
 
@@ -126,8 +126,8 @@ USB MIDI Controller,Loopback MIDI Port,false,0,0
   "umbrellaDelayMs": 1,
   "umbrellaTailMs": 1,
   "sostenutoCC": 22,
+  "sostenutoToggle": true,
   "sostenutoNote": 78,
-  "sostenutoNoteToggle": true,
   "logFilter": {
     "blacklist": [
       { "type": "CLOCK" }
@@ -138,7 +138,7 @@ USB MIDI Controller,Loopback MIDI Port,false,0,0
 
 The selected file is read using Jackson. There is no special configuration filename or automatic fallback. The project currently includes `Hammer88Pro.json` (CC22 control) and `Hammer88Pro_n_Launchpad.json` (note 78 toggle control with clock logging suppressed). The Windows package copies all project-root `*.json` files into `app/`; you can add or edit configurations there or in the working directory. Configurations are not embedded in the JAR.
 
-The seven fields from `primaryInputName` through `sostenutoCC` are required. `sostenutoNote`, `sostenutoNoteToggle`, and `logFilter` are optional. Use an empty `secondaryInputName` for a single input. Timings must be nonnegative; CC and note numbers must be 0..127. Unknown properties or invalid values reject the file and return to the selection menu.
+The eight fields from `primaryInputName` through `sostenutoToggle` are required. `sostenutoToggle` must be an explicit `true` or `false`; null is rejected. The nullable fields `sostenutoNote` and `logFilter` are optional and listed last. Use an empty `secondaryInputName` for a single input. Timings must be nonnegative; CC and note numbers must be 0..127. Unknown properties or invalid values reject the file and return to the selection menu.
 
 Device names must match the names printed at startup, ignoring letter case.
 
@@ -146,11 +146,11 @@ Device names must match the names printed at startup, ignoring letter case.
 
 Set `"sostenutoNote": 78` in a JSON configuration to use MIDI note number 78 as the sostenuto control. Keep the existing `sostenutoCC` field; omitting `sostenutoNote` (or setting it to `null`) selects CC control as before.
 
-In hold mode (`sostenutoNoteToggle` omitted, null, or false), Note On with any positive velocity engages sostenuto; Note Off or Note On with velocity zero releases it. The triggering note is consumed rather than played. Other notes on the primary input continue to play normally. Note numbers must be 0..127.
+In hold mode (`sostenutoToggle: false`), Note On with any positive velocity engages sostenuto; Note Off or Note On with velocity zero releases it. The triggering note is consumed rather than played. Other notes on the primary input continue to play normally. Note numbers must be 0..127.
 
 The input port selection is unchanged: a nonempty `secondaryInputName` selects that port and filters out all messages except the configured trigger. With an empty secondary name, the trigger is read from the primary input. The incoming MIDI channel is preserved, so the trigger controls sostenuto on that channel.
 
-Interactive configuration also accepts a `note:<number>` field after the timings or optional CC number, for example:
+Interactive configuration also accepts a final `note:<number>` field after the timings, optional CC number, and optional toggle option, for example:
 
 ```text
 Keyboard,Pedal Controller,Loopback,false,0,0,note:78
@@ -158,12 +158,19 @@ Keyboard,Pedal Controller,Loopback,false,0,0,note:78
 
 An existing CC number may precede the note field, such as `Keyboard,Loopback,false,0,0,22,note:78`. In note mode, the configured CC number is not remapped; ordinary primary-input CC messages retain their existing handling, including native CC66 sostenuto.
 
-Set optional `"sostenutoNoteToggle": true` alongside `"sostenutoNote": 78` for click/toggle behavior: the first press engages sostenuto, the next press releases it. Release messages (Note Off or zero-velocity Note On) only prepare for the next press. Repeated Note On messages while held do not toggle again. State is independent per MIDI channel. Omit the boolean or set it to `null` or `false` for hold/release behavior. This option affects note control only; CC behavior is unchanged.
+Set `"sostenutoToggle": true` alongside `"sostenutoNote": 78` for click/toggle behavior: the first press engages sostenuto, the next press releases it. Release messages (Note Off or zero-velocity Note On) only prepare for the next press. Repeated Note On messages while held do not toggle again. State is independent per MIDI channel. Set the boolean to `false` for hold/release behavior. The same boolean also enables CC toggle control when `sostenutoNote` is omitted or null.
 
-Interactive equivalent: `Keyboard,Pedal Controller,Loopback,false,0,0,note:78,toggle:true`.
+Interactive equivalent: `Keyboard,Pedal Controller,Loopback,false,0,0,toggle:true,note:78`.
 
 Select your JSON file by number at startup. In `0. Other...`, enter a manual configuration; blank input repeats the prompt. The manual prompt shows CC22 and note78 toggle examples.
 
+### Using a CC foot-switch in toggle mode
+
+Set `"sostenutoNote": null`, `"sostenutoCC": 22`, and `"sostenutoToggle": true` to toggle sostenuto with a momentary CC22 foot-switch. The boolean applies to both CC and note control. The first press engages sostenuto; the next press releases it. Release messages only re-arm the next press.
+
+CC toggle mode uses the existing sostenuto thresholds: a value of 10 or above counts as pressed, and 8 or below counts as released. Values in between retain the previous pressed state. Repeated high values do not toggle again. Toggle and pressed states are independent per MIDI channel. With toggle disabled, incoming CC values retain their existing hold/release behavior.
+
+Manual equivalent: `Keyboard,Pedal Controller,Loopback,false,0,0,22,toggle:true`.
 ### Log filtering
 
 Add an optional `logFilter` object to any JSON configuration:

@@ -6,8 +6,8 @@
   "umbrellaDelayMs": 1,
   "umbrellaTailMs": 1,
   "sostenutoCC": 22,
+  "sostenutoToggle": true,
   "sostenutoNote": 78,
-  "sostenutoNoteToggle": true,
   "logFilter": {
     "blacklist": [
       { "type": "CLOCK" }

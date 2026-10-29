@@ -7,12 +7,12 @@ final class SustSosApplication {
 
     static final String CONFIG_PROMPT =
         "Enter config: <inName>[,<in2Name>],<outName>,<umbrella:true/false>,"
-            + "<delayMs>,<tailMs>[,<sostCcIn>][,note:<0..127>][,toggle:<true/false>]\n"
+            + "<delayMs>,<tailMs>[,<sostCcIn>][,toggle:<true/false>][,note:<0..127>]\n"
             + "Adding note:<number> selects note control instead of CC control.\n"
-            + "toggle:true switches on/off once per press; toggle:false holds until release.\n"
+            + "toggle:true switches CC or note control on/off once per press; toggle:false holds until release.\n"
             + "The trigger uses in2Name when provided, otherwise inName.\n"
             + "CC example: Keyboard,Pedal Controller,Loopback,false,0,0,22\n"
-            + "Note example: Keyboard,Pedal Controller,Loopback,false,0,0,note:78,toggle:true";
+            + "Note example: Keyboard,Pedal Controller,Loopback,false,0,0,toggle:true,note:78";
     private static final boolean USE_COLORS = true;
 
     void run() throws Exception {

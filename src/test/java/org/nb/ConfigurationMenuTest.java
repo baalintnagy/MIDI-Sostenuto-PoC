@@ -55,11 +55,11 @@ class ConfigurationMenuTest {
         var output = new PrintStream(bytes);
         var calls = new AtomicInteger();
         AppConfig selected = ConfigurationMenu.select(
-            new BufferedReader(new StringReader("0\nKeys,Pedals,Out,false,0,0,note:60,toggle:true\n")),
+            new BufferedReader(new StringReader("0\nKeys,Pedals,Out,false,0,0,toggle:true,note:60\n")),
             output, List.of(), () -> { calls.incrementAndGet(); output.println("MIDI PORTS"); });
         assertEquals(1, calls.get());
         assertEquals(60, selected.sostenutoNote());
-        assertTrue(selected.sostenutoNoteToggle());
+        assertTrue(selected.sostenutoToggle());
         assertTrue(bytes.toString().indexOf("MIDI PORTS") < bytes.toString().indexOf("Enter config:"));
     }
 

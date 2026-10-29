@@ -21,8 +21,8 @@ class AppConfigTest {
           "umbrellaDelayMs": 1,
           "umbrellaTailMs": 1,
           "sostenutoCC": 22,
-          "sostenutoNote": null,
-          "sostenutoNoteToggle": false
+          "sostenutoToggle": false,
+          "sostenutoNote": null
         }
         """;
     @TempDir
@@ -92,16 +92,16 @@ class AppConfigTest {
         Path path = directory.resolve("note.json");
         String original = CONFIG_JSON
             .replaceAll("\"sostenutoNote\"\\s*:\\s*(null|[0-9]+)", "\"sostenutoNote\": null")
-            .replaceAll("\"sostenutoNoteToggle\"\\s*:\\s*(true|false)", "\"sostenutoNoteToggle\": false");
+            .replaceAll("\"sostenutoToggle\"\\s*:\\s*(true|false)", "\"sostenutoToggle\": false");
         Files.writeString(path, original.replace("\"sostenutoNote\": null", "\"sostenutoNote\": 60"));
         assertEquals(60, AppConfig.load(path).sostenutoNote());
-        assertFalse(AppConfig.load(path).sostenutoNoteToggle());
-        Files.writeString(path, Files.readString(path).replace("\"sostenutoNoteToggle\": false", "\"sostenutoNoteToggle\": true"));
-        assertTrue(AppConfig.load(path).sostenutoNoteToggle());
-        assertTrue(AppConfig.parse("Keys, Out, false, 0, 0, note:60, toggle:true").sostenutoNoteToggle());
-        assertFalse(AppConfig.parse("Keys, Out, false, 0, 0, note:60, toggle:false").sostenutoNoteToggle());
+        assertFalse(AppConfig.load(path).sostenutoToggle());
+        Files.writeString(path, Files.readString(path).replace("\"sostenutoToggle\": false", "\"sostenutoToggle\": true"));
+        assertTrue(AppConfig.load(path).sostenutoToggle());
+        assertTrue(AppConfig.parse("Keys, Out, false, 0, 0, toggle:true,note:60").sostenutoToggle());
+        assertFalse(AppConfig.parse("Keys, Out, false, 0, 0, toggle:false,note:60").sostenutoToggle());
         assertThrows(IllegalArgumentException.class,
-            () -> AppConfig.parse("Keys, Out, false, 0, 0, note:60, toggle:yes"));
+            () -> AppConfig.parse("Keys, Out, false, 0, 0, toggle:yes,note:60"));
         assertEquals(60, AppConfig.parse("Keys, Pedal, Out, false, 0, 0, note:60").sostenutoNote());
         assertEquals(60, AppConfig.parse("Keys, Out, false, 0, 0, 22, note:60").sostenutoNote());
         assertThrows(IllegalArgumentException.class,
@@ -115,10 +115,12 @@ class AppConfigTest {
         for (String devices : new String[] {"Keys,Out", "Keys,Pedal,Out"}) {
             for (String trigger : new String[] {"", ",67", ",note:60", ",67,note:60"}) {
                 for (String mode : new String[] {"", ",toggle:false", ",toggle:true"}) {
-                    AppConfig config = AppConfig.parse(devices + ",true,1,2" + trigger + mode);
+                    String cc = trigger.contains("67") ? ",67" : "";
+                    String note = trigger.contains("note:") ? ",note:60" : "";
+                    AppConfig config = AppConfig.parse(devices + ",true,1,2" + cc + mode + note);
                     assertEquals(trigger.contains("67") ? 67 : 22, config.sostenutoCC());
                     assertEquals(trigger.contains("note:") ? Integer.valueOf(60) : null, config.sostenutoNote());
-                    assertEquals(mode.equals(",toggle:true"), config.sostenutoNoteToggle());
+                    assertEquals(mode.equals(",toggle:true"), config.sostenutoToggle());
                     assertEquals(devices.contains("Pedal"), config.hasSecondaryInput());
                 }
             }
@@ -127,14 +129,33 @@ class AppConfigTest {
             "Keys,Out,maybe,0,0", "Keys,Out,false,0,0,",
             "Keys,Out,false,0,0,toggle:yes", "Keys,Out,false,0,0,note:128",
             "Keys,Out,false,0,0,note:-1", "Keys,Out,false,0,0,128",
-            "Keys,Out,false,0,0,toggle:true,note:60"}) {
+            "Keys,Out,false,0,0,note:60,toggle:true"}) {
             assertThrows(RuntimeException.class, () -> AppConfig.parse(input), input);
         }
         assertTrue(SustSosApplication.CONFIG_PROMPT.contains("note:<0..127>"));
         assertTrue(SustSosApplication.CONFIG_PROMPT.contains("toggle:<true/false>"));
-        String summary = AppConfig.parse("Keys,Out,false,0,0,note:60,toggle:true").summary();
+        String summary = AppConfig.parse("Keys,Out,false,0,0,toggle:true,note:60").summary();
         assertTrue(summary.contains("Note 60 (toggle)"));
         assertFalse(summary.contains("sostCcIn"));
+    }
+
+    @Test
+    void toggleMustBeAnExplicitBooleanAndNullableFieldsComeLast() throws Exception {
+        Path path = directory.resolve("toggle.json");
+        for (String json : new String[] {
+                CONFIG_JSON.replace("\"sostenutoToggle\": false", "\"sostenutoToggle\": null"),
+                CONFIG_JSON.replace("\"sostenutoToggle\": false", "\"sostenutoToggle\": \"false\""),
+                CONFIG_JSON.replace("\"sostenutoToggle\": false,", ""),
+                CONFIG_JSON.replace("sostenutoToggle", "sostenutoNoteToggle")}) {
+            Files.writeString(path, json);
+            assertThrows(IOException.class, () -> AppConfig.load(path));
+        }
+        for (boolean toggle : new boolean[] {false, true}) {
+            Files.writeString(path, CONFIG_JSON.replace("\"sostenutoToggle\": false", "\"sostenutoToggle\": " + toggle));
+            assertEquals(toggle, AppConfig.load(path).sostenutoToggle());
+        }
+        assertTrue(SustSosApplication.CONFIG_PROMPT.indexOf("toggle:<")
+            < SustSosApplication.CONFIG_PROMPT.indexOf("note:<"));
     }
 
     @Test

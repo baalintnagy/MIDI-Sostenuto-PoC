@@ -18,8 +18,8 @@ record AppConfig(
     @JsonProperty(required = true) int umbrellaDelayMs,
     @JsonProperty(required = true) int umbrellaTailMs,
     @JsonProperty(required = true) int sostenutoCC,
+    @JsonProperty(required = true) boolean sostenutoToggle,
     Integer sostenutoNote,
-    Boolean sostenutoNoteToggle,
     LogFilter logFilter
 ) {
 
@@ -37,19 +37,18 @@ record AppConfig(
               boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs,
               int sostenutoCC, Integer sostenutoNote) {
         this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
-            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoNote, false);
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, false, sostenutoNote);
     }
 
     AppConfig(String primaryInputName, String secondaryInputName, String outputName,
               boolean umbrellaEnabled, int umbrellaDelayMs, int umbrellaTailMs,
-              int sostenutoCC, Integer sostenutoNote, Boolean sostenutoNoteToggle) {
+              int sostenutoCC, boolean sostenutoToggle, Integer sostenutoNote) {
         this(primaryInputName, secondaryInputName, outputName, umbrellaEnabled,
-            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoNote, sostenutoNoteToggle, LogFilter.NONE);
+            umbrellaDelayMs, umbrellaTailMs, sostenutoCC, sostenutoToggle, sostenutoNote, LogFilter.NONE);
     }
 
     AppConfig {
         logFilter = logFilter == null ? LogFilter.NONE : logFilter;
-        sostenutoNoteToggle = Boolean.TRUE.equals(sostenutoNoteToggle);
         if (sostenutoNote != null && (sostenutoNote < 0 || sostenutoNote > 127)) {
             throw new IllegalArgumentException("sostenutoNote must be 0..127");
         }
@@ -89,6 +88,13 @@ record AppConfig(
 
     static AppConfig parse(String input) {
         String line = Objects.requireNonNull(input, "input").trim();
+        Integer note = null;
+        int triggerSeparator = line.lastIndexOf(',');
+        String trigger = line.substring(triggerSeparator + 1).trim();
+        if (trigger.toLowerCase(Locale.ROOT).startsWith("note:")) {
+            note = Integer.parseInt(trigger.substring(5).trim());
+            line = line.substring(0, triggerSeparator).trim();
+        }
         boolean toggle = false;
         int modeSeparator = line.lastIndexOf(',');
         String mode = line.substring(modeSeparator + 1).trim().toLowerCase(Locale.ROOT);
@@ -99,13 +105,6 @@ record AppConfig(
             }
             toggle = Boolean.parseBoolean(enabled);
             line = line.substring(0, modeSeparator).trim();
-        }
-        Integer note = null;
-        int triggerSeparator = line.lastIndexOf(',');
-        String trigger = line.substring(triggerSeparator + 1).trim();
-        if (trigger.toLowerCase(Locale.ROOT).startsWith("note:")) {
-            note = Integer.parseInt(trigger.substring(5).trim());
-            line = line.substring(0, triggerSeparator).trim();
         }
         String[] tokens = line.split("\\s*,\\s*", -1);
         boolean hasCustomSostenutoCC = hasCustomSostenutoCC(tokens);
@@ -155,8 +154,8 @@ record AppConfig(
             umbrellaDelayMs,
             umbrellaTailMs,
             sostenutoCC,
-            note,
-            toggle
+            toggle,
+            note
         );
     }
 
@@ -183,7 +182,8 @@ record AppConfig(
     }
 
     String sostenutoTrigger() {
-        return sostenutoNote == null ? "CC" + sostenutoCC : "Note " + sostenutoNote + (sostenutoNoteToggle ? " (toggle)" : " (hold)");
+        return (sostenutoNote == null ? "CC" + sostenutoCC : "Note " + sostenutoNote)
+            + (sostenutoToggle ? " (toggle)" : " (hold)");
     }
 
     String summary() {
